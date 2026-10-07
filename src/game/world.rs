@@ -3,7 +3,9 @@ use std::collections::HashMap;
 use crossbeam_channel::Receiver;
 
 use crate::game::{
-    event::{self, ClientId, GameEvent}, player::{Player, PlayerId}, room::{Room, RoomId},
+    event::{self, ClientId, GameEvent},
+    player::{Player, PlayerId},
+    room::{Room, RoomId},
 };
 
 pub struct World {
@@ -40,6 +42,7 @@ impl World {
         let player = Player::new(player_name, RoomId::new(1));
 
         self.players.insert(player_id, player);
+        println!("Player_{} has connected.", player_id.value());
     }
 }
 
