@@ -1,3 +1,5 @@
+use crossbeam_channel::Sender;
+
 use crate::game::room::RoomId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -16,13 +18,15 @@ impl PlayerId {
 pub struct Player {
     name: String,
     room: RoomId,
+    tx: Sender<String>
 }
 
 impl Player {
-    pub fn new(name: impl Into<String>, room: RoomId) -> Self {
+    pub fn new(name: impl Into<String>, room: RoomId, tx: Sender<String>) -> Self {
         Self {
             name: name.into(),
             room,
+            tx
         }
     }
 }
