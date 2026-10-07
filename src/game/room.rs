@@ -23,4 +23,16 @@ impl Room {
             exits: HashMap::new(),
         }
     }
+
+    pub fn title(&self) -> &str {
+        &self.title
+    }
+
+    pub fn description(&self) -> &str {
+        &self.description
+    }
+
+    pub fn exits(&self) -> &HashMap<String, RoomId> {
+        &self.exits
+    }
 }
