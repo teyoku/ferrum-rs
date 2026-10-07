@@ -30,10 +30,15 @@ pub fn run_game_server(addr: &str, event_tx: Sender<GameEvent>) {
     }
 }
 
-fn handle_client(id: ClientId, mut stream: TcpStream, event_tx: Sender<GameEvent>) {
+fn handle_client(id: ClientId, stream: TcpStream, event_tx: Sender<GameEvent>) {
     let (tx_to_player, rx_from_game) = crossbeam_channel::unbounded::<String>();
 
-    event_tx.send(GameEvent::Connected { id }).unwrap();
+    event_tx
+        .send(GameEvent::Connected {
+            id,
+            tx: tx_to_player,
+        })
+        .unwrap();
 
     let mut stream_clone = stream.try_clone().expect("Socket cloning error");
 
@@ -51,7 +56,9 @@ fn handle_client(id: ClientId, mut stream: TcpStream, event_tx: Sender<GameEvent
         match line {
             Ok(text) => {
                 let trimmed = text.trim().to_string();
-                event_tx.send(GameEvent::Command { id, text: trimmed }).unwrap();
+                event_tx
+                    .send(GameEvent::Command { id, text: trimmed })
+                    .unwrap();
             }
             Err(_) => break,
         }
