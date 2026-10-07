@@ -41,4 +41,8 @@ impl Player {
     pub fn tx(&self) -> &Sender<String> {
         &self.tx
     }
+
+    pub fn move_to(&mut self, room: RoomId) {
+        self.room = room;
+    }
 }
