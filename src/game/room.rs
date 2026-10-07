@@ -58,7 +58,7 @@ impl Direction {
 pub struct Room {
     title: String,
     description: String,
-    exits: HashMap<String, RoomId>,
+    exits: HashMap<Direction, RoomId>,
 }
 
 impl Room {
@@ -78,7 +78,15 @@ impl Room {
         &self.description
     }
 
-    pub fn exits(&self) -> &HashMap<String, RoomId> {
+    pub fn exits(&self) -> &HashMap<Direction, RoomId> {
         &self.exits
+    }
+
+    pub fn add_exit(&mut self, direction: Direction, destination: RoomId) {
+        self.exits.insert(direction, destination);
+    }
+
+    pub fn exit(&mut self, direction: Direction) -> Option<RoomId> {
+        self.exits.get(&direction).copied()
     }
 }
