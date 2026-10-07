@@ -10,6 +10,6 @@ fn main() {
 
     let net_tx = event_rx.clone();
     thread::spawn(move || {
-        run_game_server("127.0.0.1:400", net_tx);
+        run_game_server("127.0.0.1:4000", net_tx);
     });
 }
