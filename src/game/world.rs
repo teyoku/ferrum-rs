@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crossbeam_channel::Receiver;
+use crossbeam_channel::{Receiver, Sender};
 
 use crate::game::{
     event::{ClientId, GameEvent},
@@ -30,18 +30,19 @@ impl World {
 
     pub fn handle(&mut self, event: GameEvent) {
         match event {
-            GameEvent::Connected { id } => self.connect(id),
+            GameEvent::Connected { id, tx } => self.connect(id, tx),
             GameEvent::Command { id, text } => self.command(id, text),
             GameEvent::Disconnected { id } => self.disconnect(id),
             GameEvent::Shutdown => todo!(),
         }
     }
 
-    pub fn connect(&mut self, id: ClientId) {
+    pub fn connect(&mut self, id: ClientId, tx: Sender<String>) {
         let player_id = PlayerId::new(id.value());
         let player_name = format!("Player_{}", player_id.value());
 
-        let player = Player::new(player_name, RoomId::new(1));
+        tx.send("Welcome to the server!\n".to_string()).unwrap();
+        let player = Player::new(player_name, RoomId::new(1), tx);
 
         self.players.insert(player_id, player);
         self.connections.insert(id, player_id);
