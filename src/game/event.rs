@@ -1,3 +1,5 @@
+use crossbeam_channel::Sender;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ClientId(u32);
 
@@ -12,7 +14,7 @@ impl ClientId {
 }
 
 pub enum GameEvent {
-    Connected { id: ClientId },
+    Connected { id: ClientId, tx: Sender<String> },
 
     Command { id: ClientId, text: String },
 
