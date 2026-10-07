@@ -51,7 +51,7 @@ fn handle_client(id: ClientId, mut stream: TcpStream, event_tx: Sender<GameEvent
         match line {
             Ok(text) => {
                 let trimmed = text.trim().to_string();
-                event_tx.send(GameEvent::Command { id, text }).unwrap();
+                event_tx.send(GameEvent::Command { id, text: trimmed }).unwrap();
             }
             Err(_) => break,
         }
