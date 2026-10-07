@@ -29,7 +29,7 @@ impl World {
     pub fn handle(&mut self, event: GameEvent) {
         match event {
             GameEvent::Connected { id } => self.connect(id),
-            GameEvent::Command { id, text } => todo!(),
+            GameEvent::Command { id, text } => self.command(id, text),
             GameEvent::Disconnected { id } => self.disconnect(id),
             GameEvent::Shutdown => todo!(),
         }
@@ -45,9 +45,15 @@ impl World {
         println!("Player_{} has connected.", player_id.value());
     }
 
-    pub fn disconnect(&mut self, id: ClientId) {
+    pub fn command(&mut self, id: ClientId, text: String) {
         let player_id = PlayerId::new(id.value());
         
+        println!("Player_{}'s input: {text}", player_id.value());
+    }
+
+    pub fn disconnect(&mut self, id: ClientId) {
+        let player_id = PlayerId::new(id.value());
+
         self.players.remove(&player_id);
         println!("Player_{} has disconnected", player_id.value());
     }
