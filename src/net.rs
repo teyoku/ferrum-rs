@@ -29,4 +29,6 @@ pub fn run_game_server(addr: &str, event_tx: Sender<GameEvent>) {
     }
 }
 
-fn handle_client(id: ClientId, mut stream: TcpStream, event_tx: Sender<GameEvent>) {}
+fn handle_client(id: ClientId, mut stream: TcpStream, event_tx: Sender<GameEvent>) {
+    event_tx.send(GameEvent::Connected { id }).unwrap();
+}
