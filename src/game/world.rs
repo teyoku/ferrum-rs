@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
 use crate::game::{
-    event::{ClientId, GameEvent}, player::{Player, PlayerId}, room::{Room, RoomId},
+    event::{ClientId, GameEvent},
+    player::{Player, PlayerId},
+    room::{Room, RoomId},
 };
 
 pub struct World {
@@ -11,10 +13,15 @@ pub struct World {
 
 impl World {
     pub fn new() -> Self {
-        Self {
+        let mut world = Self {
             rooms: HashMap::new(),
             players: HashMap::new(),
-        }
+        };
+        world
+            .rooms
+            .insert(RoomId::new(1), Room::new("start_room", "Just a start room"));
+
+        world
     }
 
     pub fn handle(&mut self, event: GameEvent) {
@@ -30,7 +37,7 @@ impl World {
         let player_id = PlayerId::new(id.value());
         let player_name = format!("Player_{}", player_id.value());
 
-        let player = Player::new(player_name, room);
+        let player = Player::new(player_name, RoomId::new(1));
 
         self.players.insert(player_id, player);
     }
