@@ -56,7 +56,31 @@ impl World {
             return;
         };
 
-        println!("Player_{}'s input: {text}", player_id.value());
+        let player = self.players.get(&player_id).unwrap();
+
+        let room_id = player.room();
+        let room = self.rooms.get(&room_id).unwrap();
+        let exits_str = room
+            .exits()
+            .values()
+            .map(|id| self.rooms.get(id).unwrap().title().to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+
+        let tx = player.tx();
+
+        match text.as_str() {
+            "look" => {
+                let msg = format!(
+                    "{}\n{}\n\n[Exits: {}]",
+                    room.title(),
+                    room.description(),
+                    exits_str
+                );
+                tx.send(msg).unwrap();
+            }
+            _ => tx.send("Unknown command\n".to_string()).unwrap(),
+        }
     }
 
     pub fn disconnect(&mut self, id: ClientId) {
