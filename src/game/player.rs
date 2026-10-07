@@ -18,7 +18,7 @@ impl PlayerId {
 pub struct Player {
     name: String,
     room: RoomId,
-    tx: Sender<String>
+    tx: Sender<String>,
 }
 
 impl Player {
@@ -26,7 +26,19 @@ impl Player {
         Self {
             name: name.into(),
             room,
-            tx
+            tx,
         }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn room(&self) -> RoomId {
+        self.room
+    }
+
+    pub fn tx(&self) -> &Sender<String> {
+        &self.tx
     }
 }
