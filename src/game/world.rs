@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crossbeam_channel::Receiver;
 
 use crate::game::{
-    event::{self, ClientId, GameEvent},
+    event::{ClientId, GameEvent},
     player::{Player, PlayerId},
     room::{Room, RoomId},
 };
@@ -11,6 +11,7 @@ use crate::game::{
 pub struct World {
     rooms: HashMap<RoomId, Room>,
     players: HashMap<PlayerId, Player>,
+    connections: HashMap<ClientId, PlayerId>,
 }
 
 impl World {
@@ -18,6 +19,7 @@ impl World {
         let mut world = Self {
             rooms: HashMap::new(),
             players: HashMap::new(),
+            connections: HashMap::new(),
         };
         world
             .rooms
@@ -42,17 +44,25 @@ impl World {
         let player = Player::new(player_name, RoomId::new(1));
 
         self.players.insert(player_id, player);
+        self.connections.insert(id, player_id);
+
         println!("Player_{} has connected.", player_id.value());
     }
 
     pub fn command(&mut self, id: ClientId, text: String) {
-        let player_id = PlayerId::new(id.value());
-        
+        let Some(&player_id) = self.connections.get(&id) else {
+            println!("Command from unknown client.");
+            return;
+        };
+
         println!("Player_{}'s input: {text}", player_id.value());
     }
 
     pub fn disconnect(&mut self, id: ClientId) {
-        let player_id = PlayerId::new(id.value());
+        let Some(player_id) = self.connections.remove(&id) else {
+            println!("Disconnect from unknown client.");
+            return;
+        };
 
         self.players.remove(&player_id);
         println!("Player_{} has disconnected", player_id.value());
