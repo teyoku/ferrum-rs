@@ -9,6 +9,52 @@ impl RoomId {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Direction {
+    North,
+    South,
+    East,
+    West,
+    Up,
+    Down,
+}
+
+impl Direction {
+    pub fn parse(input: &str) -> Option<Self> {
+        match input.to_ascii_lowercase().as_str() {
+            "n" | "north" => Some(Self::North),
+            "s" | "south" => Some(Self::South),
+            "e" | "east" => Some(Self::East),
+            "w" | "west" => Some(Self::West),
+            "u" | "up" => Some(Self::Up),
+            "d" | "down" => Some(Self::Down),
+            _ => None,
+        }
+    }
+
+    pub fn opposite(self) -> Self {
+        match self {
+            Self::North => Self::South,
+            Self::South => Self::North,
+            Self::East => Self::West,
+            Self::West => Self::East,
+            Self::Up => Self::Down,
+            Self::Down => Self::Up,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::North => "north",
+            Self::South => "south",
+            Self::East => "east",
+            Self::West => "west",
+            Self::Up => "up",
+            Self::Down => "down",
+        }
+    }
+}
+
 pub struct Room {
     title: String,
     description: String,
