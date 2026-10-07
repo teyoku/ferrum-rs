@@ -72,7 +72,7 @@ impl World {
         match text.as_str() {
             "look" => {
                 let msg = format!(
-                    "{}\n{}\n\n[Exits: {}]",
+                    "{}\n{}\n\n[Exits: {}]\n",
                     room.title(),
                     room.description(),
                     exits_str
