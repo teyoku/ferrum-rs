@@ -30,7 +30,7 @@ impl World {
         match event {
             GameEvent::Connected { id } => self.connect(id),
             GameEvent::Command { id, text } => todo!(),
-            GameEvent::Disconnected { id } => todo!(),
+            GameEvent::Disconnected { id } => self.disconnect(id),
             GameEvent::Shutdown => todo!(),
         }
     }
@@ -43,6 +43,13 @@ impl World {
 
         self.players.insert(player_id, player);
         println!("Player_{} has connected.", player_id.value());
+    }
+
+    pub fn disconnect(&mut self, id: ClientId) {
+        let player_id = PlayerId::new(id.value());
+        
+        self.players.remove(&player_id);
+        println!("Player_{} has disconnected", player_id.value());
     }
 }
 
