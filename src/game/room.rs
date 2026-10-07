@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct RoomId(u32);
+pub struct RoomId(u32);
 
 impl RoomId {
     pub fn new(value: u32) -> Self {
