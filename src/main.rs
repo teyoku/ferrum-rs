@@ -1,6 +1,6 @@
 use std::thread;
 
-use crate::net::run_game_server;
+use crate::{game::world::run_game_world, net::run_game_server};
 
 mod game;
 mod net;
@@ -12,4 +12,6 @@ fn main() {
     thread::spawn(move || {
         run_game_server("127.0.0.1:4000", net_tx);
     });
+
+    run_game_world(event_rx);
 }
