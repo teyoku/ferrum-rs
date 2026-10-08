@@ -45,6 +45,33 @@ impl World {
             .map_err(|_| "Client disconnected".to_string())
     }
 
+    pub fn describe_current_room(&self, player_id: PlayerId) -> Result<String, String> {
+        let player = self
+            .players
+            .get(&player_id)
+            .ok_or_else(|| "Player does not exist".to_string())?;
+
+        let room = self
+            .rooms
+            .get(&player.room())
+            .ok_or_else(|| "Player room does not exist".to_string())?;
+
+        let mut exits = room
+            .exits()
+            .keys()
+            .map(|direction| direction.as_str())
+            .collect::<Vec<_>>();
+
+        exits.sort_unstable();
+
+        Ok(format!(
+            "{}\n{}\n\n[Exits: {}]\n",
+            room.title(),
+            room.description(),
+            exits.join(", ")
+        ))
+    }
+
     pub fn connect(&mut self, id: ClientId, tx: Sender<String>) {
         let player_id = PlayerId::new(id.value());
         let player_name = format!("Player_{}", player_id.value());
