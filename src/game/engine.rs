@@ -1,4 +1,4 @@
-use crate::game::{commands, registry::CommandRegistry, world::World};
+use crate::game::{commands, event::GameEvent, registry::CommandRegistry, world::World};
 
 pub struct Game {
     world: World,
@@ -14,6 +14,14 @@ impl Game {
         Self {
             world: World::new(),
             commands: command_registry,
+        }
+    }
+
+    pub fn handle(&mut self, event: GameEvent) {
+        match event {
+            GameEvent::Connected { id, tx } => self.world.connect(id, tx),
+            GameEvent::Command { id, text } => self.dispatch(id, &text),
+            GameEvent::Disconnected { id } => self.world.disconnect(id),
         }
     }
 }
