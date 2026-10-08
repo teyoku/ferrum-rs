@@ -63,3 +63,19 @@ impl Game {
         }
     }
 }
+
+fn split_input(input: &str) -> Option<(&str, &str)> {
+    let input = input.trim();
+
+    if input.is_empty() {
+        return None;
+    }
+
+    match input.find(char::is_whitespace) {
+        Some(index) => {
+            let (command, args) = input.split_at(index);
+            Some((command, args.trim()))
+        }
+        None => Some((input, "")),
+    }
+}
