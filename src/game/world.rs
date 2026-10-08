@@ -29,6 +29,10 @@ impl World {
         world
     }
 
+    pub fn player_id(&self, client_id: ClientId) -> Option<PlayerId> {
+        self.connections.get(&client_id).copied()
+    }
+
     pub fn connect(&mut self, id: ClientId, tx: Sender<String>) {
         let player_id = PlayerId::new(id.value());
         let player_name = format!("Player_{}", player_id.value());
