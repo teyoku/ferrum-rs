@@ -104,7 +104,6 @@ impl World {
 
     pub fn disconnect(&mut self, id: ClientId) {
         let Some(player_id) = self.connections.remove(&id) else {
-            println!("Disconnect from unknown client.");
             return;
         };
 
