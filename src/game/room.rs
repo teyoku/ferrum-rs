@@ -86,7 +86,7 @@ impl Room {
         self.exits.insert(direction, destination);
     }
 
-    pub fn exit(&mut self, direction: Direction) -> Option<RoomId> {
+    pub fn exit(&self, direction: Direction) -> Option<RoomId> {
         self.exits.get(&direction).copied()
     }
 }
