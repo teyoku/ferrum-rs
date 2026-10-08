@@ -47,8 +47,9 @@ fn handle_client(id: ClientId, stream: TcpStream, event_tx: Sender<GameEvent>) {
             if stream_clone.write_all(message.as_bytes()).is_err() {
                 break;
             }
-            let _ = stream_clone.shutdown(std::net::Shutdown::Both);
         }
+        
+        let _ = stream_clone.shutdown(std::net::Shutdown::Both);
     });
 
     let reader = BufReader::new(stream);
