@@ -1,4 +1,4 @@
-use crate::game::{event::ClientId, player::PlayerId, room::Direction, world::World};
+use crate::game::{event::ClientId, player::PlayerId, registry::CommandRegistry, world::World};
 
 pub type CommandResult = Result<(), String>;
 
@@ -7,7 +7,7 @@ pub struct CommandContext<'a> {
     pub registry: &'a CommandRegistry,
     pub client_id: ClientId,
     pub player_id: PlayerId,
-    pub args: &'a str
+    pub args: &'a str,
 }
 
 impl<'a> CommandContext<'a> {
