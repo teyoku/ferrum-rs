@@ -1,4 +1,5 @@
 mod look;
+mod move_;
 
 use crate::game::{commands::look::Look, registry::CommandRegistry};
 
