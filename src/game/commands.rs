@@ -114,7 +114,19 @@ impl Command for Say {
             return Err("What to say?".to_string());
         }
 
-        ctx.send(format!("You said \"{}\"\n", ctx.args))
+        let players = ctx.world.players();
+        let current_player = players
+            .get(&ctx.player_id)
+            .ok_or_else(|| "Player does not exist".to_string())?;
+
+        for (player_id, player) in players {
+            if player.room() == current_player.room() {
+                let message = format!("{} said: \"{}\"\n", current_player.name(), ctx.args);
+                let _ = ctx.world.send_to(*player_id, message);
+            }
+        }
+
+        Ok(())
     }
 }
 
