@@ -82,18 +82,18 @@ impl World {
                 }
                 Command::Move(direction) => {
                     let Some(exit_id) = room.exit(direction) else {
-                        tx.send(format!("Unknown direction: {}", direction.as_str()))
+                        tx.send(format!("Unknown direction: {}\n", direction.as_str()))
                             .unwrap();
                         return;
                     };
 
                     player.move_to(exit_id);
                 }
-                Command::Say(msg) => tx.send(format!("You said \"{msg}\"")).unwrap(),
+                Command::Say(msg) => tx.send(format!("You said \"{msg}\"\n")).unwrap(),
                 Command::Help => todo!(),
                 Command::Quit => todo!(),
             },
-            Err(err) => tx.send(format!("Command Error: {err}")).unwrap(),
+            Err(err) => tx.send(format!("Command Error: {err}\n")).unwrap(),
         }
     }
 
