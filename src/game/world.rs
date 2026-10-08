@@ -34,7 +34,6 @@ impl World {
             GameEvent::Connected { id, tx } => self.connect(id, tx),
             GameEvent::Command { id, text } => self.command(id, text),
             GameEvent::Disconnected { id } => self.disconnect(id),
-            GameEvent::Shutdown => todo!(),
         }
     }
 
