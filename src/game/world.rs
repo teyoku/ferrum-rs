@@ -5,7 +5,7 @@ use crossbeam_channel::{Receiver, Sender};
 use crate::game::{
     command::Command,
     event::{ClientId, GameEvent},
-    player::{Player, PlayerId},
+    player::{self, Player, PlayerId},
     room::{Room, RoomId},
 };
 
@@ -31,6 +31,18 @@ impl World {
 
     pub fn player_id(&self, client_id: ClientId) -> Option<PlayerId> {
         self.connections.get(&client_id).copied()
+    }
+
+    pub fn send_to(&self, player_id: PlayerId, message: impl Into<String>) -> Result<(), String> {
+        let player = self
+            .players
+            .get(&player_id)
+            .ok_or_else(|| "Player does not exist".to_string())?;
+
+        player
+            .tx()
+            .send(message.into())
+            .map_err(|_| "Client disconnected".to_string())
     }
 
     pub fn connect(&mut self, id: ClientId, tx: Sender<String>) {
