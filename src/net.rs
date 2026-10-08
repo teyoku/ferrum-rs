@@ -48,7 +48,7 @@ fn handle_client(id: ClientId, stream: TcpStream, event_tx: Sender<GameEvent>) {
                 break;
             }
         }
-        
+
         let _ = stream_clone.shutdown(std::net::Shutdown::Both);
     });
 
@@ -57,9 +57,13 @@ fn handle_client(id: ClientId, stream: TcpStream, event_tx: Sender<GameEvent>) {
         match line {
             Ok(text) => {
                 let trimmed = text.trim().to_string();
-                event_tx
-                    .try_send(GameEvent::Command { id, text: trimmed })
-                    .unwrap();
+
+                if event_tx
+                    .send(GameEvent::Command { id, text: trimmed })
+                    .is_err()
+                {
+                    break;
+                }
             }
             Err(_) => break,
         }
