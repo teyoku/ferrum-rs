@@ -1,6 +1,6 @@
 use std::thread;
 
-use crate::{game::engine::run_game_world, net::run_game_server};
+use crate::{game::run_game_world, net::run_game_server};
 
 mod game;
 mod net;
