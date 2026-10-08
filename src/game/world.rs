@@ -62,9 +62,9 @@ impl World {
         let room = self.rooms.get(&room_id).unwrap();
         let exits_str = room
             .exits()
-            .values()
-            .map(|id| self.rooms.get(id).unwrap().title().to_string())
-            .collect::<Vec<String>>()
+            .keys()
+            .map(|dir| dir.as_str())
+            .collect::<Vec<&str>>()
             .join(", ");
 
         let tx = player.tx();
