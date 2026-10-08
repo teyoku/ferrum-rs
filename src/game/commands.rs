@@ -121,7 +121,13 @@ impl Command for Say {
 
         for (player_id, player) in players {
             if player.room() == current_player.room() {
-                let message = format!("{} said: \"{}\"\n", current_player.name(), ctx.args);
+                let (sender, verb) = if *player_id == ctx.player_id {
+                    ("You", "say")
+                } else {
+                    (current_player.name(), "says")
+                };
+
+                let message = format!("{sender} {verb}: \"{}\"\n", ctx.args);
                 let _ = ctx.world.send_to(*player_id, message);
             }
         }
