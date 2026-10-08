@@ -19,6 +19,4 @@ pub enum GameEvent {
     Command { id: ClientId, text: String },
 
     Disconnected { id: ClientId },
-
-    Shutdown,
 }
