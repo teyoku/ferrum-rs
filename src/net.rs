@@ -69,5 +69,5 @@ fn handle_client(id: ClientId, stream: TcpStream, event_tx: Sender<GameEvent>) {
         }
     }
 
-    event_tx.try_send(GameEvent::Disconnected { id }).unwrap();
+    let _ = event_tx.send(GameEvent::Disconnected { id });
 }
