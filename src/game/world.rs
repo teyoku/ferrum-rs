@@ -29,14 +29,6 @@ impl World {
         world
     }
 
-    pub fn handle(&mut self, event: GameEvent) {
-        match event {
-            GameEvent::Connected { id, tx } => self.connect(id, tx),
-            GameEvent::Command { id, text } => self.command(id, text),
-            GameEvent::Disconnected { id } => self.disconnect(id),
-        }
-    }
-
     pub fn connect(&mut self, id: ClientId, tx: Sender<String>) {
         let player_id = PlayerId::new(id.value());
         let player_name = format!("Player_{}", player_id.value());
@@ -48,58 +40,6 @@ impl World {
         self.connections.insert(id, player_id);
 
         println!("Player_{} has connected.", player_id.value());
-    }
-
-    pub fn command(&mut self, id: ClientId, text: String) {
-        let Some(&player_id) = self.connections.get(&id) else {
-            println!("Command from unknown client.");
-            return;
-        };
-
-        let player = self.players.get_mut(&player_id).unwrap();
-        let tx = player.tx();
-
-        let room_id = player.room();
-        let room = self.rooms.get_mut(&room_id).unwrap();
-
-        match Command::parse(&text) {
-            Ok(command) => match command {
-                Command::Look => {
-                    let exits_str = room
-                        .exits()
-                        .keys()
-                        .map(|dir| dir.as_str())
-                        .collect::<Vec<&str>>()
-                        .join(", ");
-
-                    let msg = format!(
-                        "{}\n{}\n\n[Exits: {}]\n",
-                        room.title(),
-                        room.description(),
-                        exits_str
-                    );
-                    tx.send(msg).unwrap();
-                }
-                Command::Move(direction) => {
-                    let Some(exit_id) = room.exit(direction) else {
-                        tx.send(format!("Unknown direction: {}\n", direction.as_str()))
-                            .unwrap();
-                        return;
-                    };
-
-                    player.move_to(exit_id);
-                }
-                Command::Say(msg) => tx.send(format!("You said \"{msg}\"\n")).unwrap(),
-                Command::Help => tx
-                    .send("help command is not implemented yet\n".to_string())
-                    .unwrap(),
-                Command::Quit => {
-                    let _ = tx.send("Goodbye!\n".to_string());
-                    self.disconnect(id);
-                }
-            },
-            Err(err) => tx.send(format!("Command Error: {err}\n")).unwrap(),
-        }
     }
 
     pub fn disconnect(&mut self, id: ClientId) {
