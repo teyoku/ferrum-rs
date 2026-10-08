@@ -1,3 +1,5 @@
+use crossbeam_channel::Receiver;
+
 use crate::game::{
     command::CommandContext,
     commands,
@@ -77,5 +79,13 @@ fn split_input(input: &str) -> Option<(&str, &str)> {
             Some((command, args.trim()))
         }
         None => Some((input, "")),
+    }
+}
+
+pub fn run_game_world(event_rx: Receiver<GameEvent>) {
+    let mut game = Game::new();
+
+    while let Ok(event) = event_rx.recv() {
+        game.handle(event);
     }
 }
