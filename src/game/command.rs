@@ -10,7 +10,7 @@ pub enum Command {
 
 impl Command {
     pub fn parse(input: &str) -> Result<Self, String> {
-        let mut words = input.split_ascii_whitespace();
+        let mut words = input.split_whitespace();
         let Some(verb) = words.next() else {
             return Err("Please write a command".to_string());
         };
