@@ -1,11 +1,10 @@
 use std::collections::HashMap;
 
-use crossbeam_channel::{Receiver, Sender};
+use crossbeam_channel::Sender;
 
 use crate::game::{
-    command::Command,
-    event::{ClientId, GameEvent},
-    player::{self, Player, PlayerId},
+    event::ClientId,
+    player::{Player, PlayerId},
     room::{Direction, Room, RoomId},
 };
 
@@ -116,13 +115,5 @@ impl World {
 
         self.players.remove(&player_id);
         println!("Player_{} has disconnected", player_id.value());
-    }
-}
-
-pub fn run_game_world(event_rx: Receiver<GameEvent>) {
-    let mut world = World::new();
-
-    while let Ok(event) = event_rx.recv() {
-        world.handle(event);
     }
 }
