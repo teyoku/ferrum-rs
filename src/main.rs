@@ -4,6 +4,7 @@ use crate::{game::engine::run_game_world, net::run_game_server};
 
 mod game;
 mod net;
+mod content;
 
 fn main() {
     let (event_tx, event_rx) = crossbeam_channel::bounded(4096);
