@@ -90,8 +90,12 @@ impl World {
                     player.move_to(exit_id);
                 }
                 Command::Say(msg) => tx.send(format!("You said \"{msg}\"\n")).unwrap(),
-                Command::Help => todo!(),
-                Command::Quit => todo!(),
+                Command::Help => tx
+                    .send("help command is not implemented yet\n".to_string())
+                    .unwrap(),
+                Command::Quit => tx
+                    .send("quit command is not implemented yet\n".to_string())
+                    .unwrap(),
             },
             Err(err) => tx.send(format!("Command Error: {err}\n")).unwrap(),
         }
