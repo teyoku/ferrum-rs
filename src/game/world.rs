@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crossbeam_channel::{Receiver, Sender};
 
 use crate::game::{
+    command::Command,
     event::{ClientId, GameEvent},
     player::{Player, PlayerId},
     room::{Room, RoomId},
@@ -56,30 +57,44 @@ impl World {
             return;
         };
 
-        let player = self.players.get(&player_id).unwrap();
-
-        let room_id = player.room();
-        let room = self.rooms.get(&room_id).unwrap();
-        let exits_str = room
-            .exits()
-            .keys()
-            .map(|dir| dir.as_str())
-            .collect::<Vec<&str>>()
-            .join(", ");
-
+        let player = self.players.get_mut(&player_id).unwrap();
         let tx = player.tx();
 
-        match text.as_str() {
-            "look" => {
-                let msg = format!(
-                    "{}\n{}\n\n[Exits: {}]\n",
-                    room.title(),
-                    room.description(),
-                    exits_str
-                );
-                tx.send(msg).unwrap();
-            }
-            _ => tx.send("Unknown command\n".to_string()).unwrap(),
+        let room_id = player.room();
+        let room = self.rooms.get_mut(&room_id).unwrap();
+
+        match Command::parse(&text) {
+            Ok(command) => match command {
+                Command::Look => {
+                    let exits_str = room
+                        .exits()
+                        .keys()
+                        .map(|dir| dir.as_str())
+                        .collect::<Vec<&str>>()
+                        .join(", ");
+
+                    let msg = format!(
+                        "{}\n{}\n\n[Exits: {}]\n",
+                        room.title(),
+                        room.description(),
+                        exits_str
+                    );
+                    tx.send(msg).unwrap();
+                }
+                Command::Move(direction) => {
+                    let Some(exit_id) = room.exit(direction) else {
+                        tx.send(format!("Unknown direction: {}", direction.as_str()))
+                            .unwrap();
+                        return;
+                    };
+
+                    player.move_to(exit_id);
+                }
+                Command::Say(msg) => tx.send(format!("You said \"{msg}\"")).unwrap(),
+                Command::Help => todo!(),
+                Command::Quit => todo!(),
+            },
+            Err(err) => tx.send(format!("Command Error: {err}")).unwrap(),
         }
     }
 
