@@ -6,7 +6,7 @@ use crate::game::{
     command::Command,
     event::{ClientId, GameEvent},
     player::{self, Player, PlayerId},
-    room::{Room, RoomId},
+    room::{Direction, Room, RoomId},
 };
 
 pub struct World {
@@ -70,6 +70,30 @@ impl World {
             room.description(),
             exits.join(", ")
         ))
+    }
+
+    pub fn move_player(&mut self, player_id: PlayerId, direction: Direction) -> Result<(), String> {
+        let current_room = self
+            .players
+            .get(&player_id)
+            .ok_or_else(|| "Player does not exist".to_string())?
+            .room();
+
+        let destination = self
+            .rooms
+            .get(&current_room)
+            .ok_or_else(|| "Player room does not exist".to_string())?
+            .exit(direction)
+            .ok_or_else(|| format!("Unknown direction: {}", direction.as_str()))?;
+
+        let player = self
+            .players
+            .get_mut(&player_id)
+            .ok_or_else(|| "Player does not exist".to_string())?;
+
+        player.move_to(destination);
+
+        Ok(())
     }
 
     pub fn connect(&mut self, id: ClientId, tx: Sender<String>) {
