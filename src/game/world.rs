@@ -93,7 +93,10 @@ impl World {
                 Command::Help => tx
                     .send("help command is not implemented yet\n".to_string())
                     .unwrap(),
-                Command::Quit => self.disconnect(id),
+                Command::Quit => {
+                    let _ = tx.send("Goodbye!\n".to_string());
+                    self.disconnect(id);
+                }
             },
             Err(err) => tx.send(format!("Command Error: {err}\n")).unwrap(),
         }
