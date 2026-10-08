@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "start_room": "town_square",
+
+  "rooms": [
+    {
+      "key": "town_square",
+      "title": "Town Square",
+      "description": "The heart of a small frontier town."
+    },
+    {
+      "key": "north_road",
+      "title": "Northern Road",
+      "description": "A dusty road leading beyond the town."
+    },
+    {
+      "key": "tavern",
+      "title": "The Rusty Crab",
+      "description": "A warm tavern filled with smoke and conversation."
+    }
+  ],
+
+  "connections": [
+    {
+      "from": "town_square",
+      "direction": "north",
+      "to": "north_road",
+      "bidirectional": true
+    },
+    {
+      "from": "north_road",
+      "direction": "east",
+      "to": "tavern",
+      "bidirectional": true
+    }
+  ]
+}
