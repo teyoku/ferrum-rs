@@ -47,7 +47,7 @@ async fn handle_client(id: ClientId, stream: TcpStream, event_tx: Sender<GameEve
 
                         let line = line.trim().to_string();
                         // Keep command delivery bounded and nonblocking.
-                        if event_tx.try_send(GameEvent::Command { id, text: line }).is_err() {
+                        if event_tx.send(GameEvent::Command { id, text: line }).await.is_err() {
                             break;
                         }
                     }
