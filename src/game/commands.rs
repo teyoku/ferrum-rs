@@ -1,5 +1,6 @@
 use crate::game::{
     command::{Command, CommandContext, CommandResult},
+    event::EngineEffect,
     registry::CommandRegistry,
     room::Direction,
 };
@@ -114,22 +115,36 @@ impl Command for Say {
             return Err("What to say?".to_string());
         }
 
-        let players = ctx.world.players();
-        let current_player = players
-            .get(&ctx.player_id)
-            .ok_or_else(|| "Player does not exist".to_string())?;
+        let (current_room, current_name) = {
+            let p = ctx
+                .world
+                .players()
+                .get(&ctx.player_id)
+                .ok_or("Player does not exist")?;
+            (p.room(), p.name().to_string())
+        };
 
-        for (player_id, player) in players {
-            if player.room() == current_player.room() {
-                let (sender, verb) = if *player_id == ctx.player_id {
-                    ("You", "say")
-                } else {
-                    (current_player.name(), "says")
-                };
-
-                let message = format!("{sender} {verb}: \"{}\"\n", ctx.args);
-                let _ = ctx.world.send_to(*player_id, message);
+        let mut targets = Vec::new();
+        for (&c_id, &p_id) in ctx.world.connections() {
+            if let Some(p) = ctx.world.players().get(&p_id)
+                && p.room() == current_room
+            {
+                targets.push((c_id, p_id));
             }
+        }
+
+        for (c_id, p_id) in targets {
+            let (sender, verb) = if p_id == ctx.player_id {
+                ("You", "say")
+            } else {
+                (current_name.as_str(), "says")
+            };
+
+            let message = format!("{sender} {verb}: \"{}\"\n", ctx.args);
+            ctx.effects.push(EngineEffect::Send {
+                session_id: c_id,
+                message,
+            });
         }
 
         Ok(())
@@ -168,7 +183,11 @@ impl Command for Quit {
 
     fn execute(&self, ctx: &mut CommandContext<'_>) -> CommandResult {
         let _ = ctx.send("Goodbye!\n");
-        ctx.world.disconnect(ctx.client_id);
+        
+        ctx.effects.push(EngineEffect::Close { 
+            session_id: ctx.client_id, 
+            reason: "Quit command".to_string() 
+        });
 
         Ok(())
     }
