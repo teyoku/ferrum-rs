@@ -29,7 +29,7 @@ pub async fn run_game_server(addr: &str, event_tx: Sender<GameEvent>) {
 }
 
 async fn handle_client(id: ClientId, stream: TcpStream, event_tx: Sender<GameEvent>) {
-    let (tx_to_player, rx_from_game) = crossbeam_channel::bounded(256);
+    let (tx_to_player, rx_from_game) = tokio::sync::mpsc::channel(256);
 
     let _ = event_tx
         .send(GameEvent::Connected {
