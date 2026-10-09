@@ -29,7 +29,7 @@ pub async fn run_game_server(addr: &str, event_tx: Sender<GameEvent>) {
 }
 
 async fn handle_client(id: ClientId, stream: TcpStream, event_tx: Sender<GameEvent>) {
-    let (tx_to_player, rx_from_game) = tokio::sync::mpsc::channel(256);
+    let (tx_to_player, mut rx_from_game) = tokio::sync::mpsc::channel(256);
 
     let _ = event_tx
         .send(GameEvent::Connected {
@@ -40,15 +40,13 @@ async fn handle_client(id: ClientId, stream: TcpStream, event_tx: Sender<GameEve
 
     let mut stream_clone = stream.try_clone().expect("Socket cloning error");
 
-    thread::spawn(move || {
-        for message in rx_from_game {
-            if stream_clone.write_all(message.as_bytes()).is_err() {
-                break;
-            }
+    while let Some(message) = rx_from_game.recv().await {
+        if stream_clone.write_all(message.as_bytes()).is_err() {
+            break;
         }
+    }
 
-        let _ = stream_clone.shutdown(std::net::Shutdown::Both);
-    });
+    let _ = stream_clone.shutdown(std::net::Shutdown::Both);
 
     const MAX_LINE_LEN: usize = 16 * 1024;
 
