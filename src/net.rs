@@ -6,11 +6,14 @@ use tokio::{
 };
 use tokio_util::codec::{FramedRead, LinesCodec, LinesCodecError};
 
-use crate::game::event::{ClientId, GameEvent};
+use crate::game::{
+    RuntimeEvent,
+    event::{ClientId, GameEvent},
+};
 
 pub const MAX_LINE_LEN: usize = 16 * 1024;
 
-pub async fn run_game_server(addr: &str, event_tx: Sender<GameEvent>) {
+pub async fn run_game_server(addr: &str, event_tx: Sender<RuntimeEvent>) {
     let listener = TcpListener::bind(addr).await.expect("Cannot run server");
     let mut id_counter = 0;
 
@@ -25,11 +28,11 @@ pub async fn run_game_server(addr: &str, event_tx: Sender<GameEvent>) {
     }
 }
 
-async fn handle_client(id: ClientId, stream: TcpStream, event_tx: Sender<GameEvent>) {
-    let (tx_to_player, mut outbound_rx) = tokio::sync::mpsc::channel(256);
+async fn handle_client(id: ClientId, stream: TcpStream, event_tx: Sender<RuntimeEvent>) {
+    let (tx_to_player, mut outbound_rx) = tokio::sync::mpsc::channel::<String>(256);
 
     let _ = event_tx
-        .send(GameEvent::Connected {
+        .send(RuntimeEvent::NewConnection {
             id,
             tx: tx_to_player,
         })
@@ -45,7 +48,7 @@ async fn handle_client(id: ClientId, stream: TcpStream, event_tx: Sender<GameEve
                     Some(Ok(line)) => {
                         let line = line.trim().to_string();
                         // Keep command delivery bounded and nonblocking.
-                        if event_tx.send(GameEvent::Command { id, text: line }).await.is_err() {
+                        if event_tx.send(RuntimeEvent::GameEvent(GameEvent::Command { id, text: line })).await.is_err() {
                             break;
                         }
                     }
@@ -70,5 +73,7 @@ async fn handle_client(id: ClientId, stream: TcpStream, event_tx: Sender<GameEve
     }
 
     let _ = write_half.shutdown().await;
-    let _ = event_tx.send(GameEvent::Disconnected { id }).await;
+    let _ = event_tx
+        .send(RuntimeEvent::GameEvent(GameEvent::Disconnected { id }))
+        .await;
 }
