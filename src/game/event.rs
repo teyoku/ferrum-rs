@@ -20,6 +20,21 @@ pub enum Audience {
     All,
 }
 
+pub enum EngineEffect {
+    Send {
+        session_id: ClientId,
+        message: String,
+    },
+    Broadcast {
+        audience: Audience,
+        message: String,
+    },
+    Close {
+        session_id: ClientId,
+        reason: String,
+    },
+}
+
 pub enum GameEvent {
     Connected { id: ClientId, tx: Sender<String> },
 
