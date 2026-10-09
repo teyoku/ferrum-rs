@@ -1,5 +1,3 @@
-use tokio::sync::mpsc::Sender;
-
 use crate::game::room::RoomId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
