@@ -1,6 +1,6 @@
 use crate::game::{
     command::{Command, CommandContext, CommandResult},
-    event::EngineEffect,
+    event::{Audience, EngineEffect},
     registry::CommandRegistry,
     room::Direction,
 };
@@ -124,28 +124,15 @@ impl Command for Say {
             (p.room(), p.name().to_string())
         };
 
-        let mut targets = Vec::new();
-        for (&c_id, &p_id) in ctx.world.connections() {
-            if let Some(p) = ctx.world.players().get(&p_id)
-                && p.room() == current_room
-            {
-                targets.push((c_id, p_id));
-            }
-        }
+        ctx.send(format!("You say: \"{}\"\n", ctx.args))?;
 
-        for (c_id, p_id) in targets {
-            let (sender, verb) = if p_id == ctx.player_id {
-                ("You", "say")
-            } else {
-                (current_name.as_str(), "says")
-            };
-
-            let message = format!("{sender} {verb}: \"{}\"\n", ctx.args);
-            ctx.effects.push(EngineEffect::Send {
-                session_id: c_id,
-                message,
-            });
-        }
+        ctx.effects.push(EngineEffect::Broadcast {
+            audience: Audience::Room {
+                room_id: current_room,
+                except: Some(ctx.client_id),
+            },
+            message: format!("{} says: \"{}\"\n", current_name, ctx.args),
+        });
 
         Ok(())
     }
@@ -183,10 +170,10 @@ impl Command for Quit {
 
     fn execute(&self, ctx: &mut CommandContext<'_>) -> CommandResult {
         let _ = ctx.send("Goodbye!\n");
-        
-        ctx.effects.push(EngineEffect::Close { 
-            session_id: ctx.client_id, 
-            reason: "Quit command".to_string() 
+
+        ctx.effects.push(EngineEffect::Close {
+            session_id: ctx.client_id,
+            reason: "Quit command".to_string(),
         });
 
         Ok(())
