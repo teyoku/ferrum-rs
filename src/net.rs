@@ -1,10 +1,14 @@
+use futures_util::StreamExt;
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     net::{TcpListener, TcpStream},
     sync::mpsc::Sender,
 };
+use tokio_util::codec::{FramedRead, LinesCodec, LinesCodecError};
 
 use crate::game::event::{ClientId, GameEvent};
+
+pub const MAX_LINE_LEN: usize = 16 * 1024;
 
 pub async fn run_game_server(addr: &str, event_tx: Sender<GameEvent>) {
     let listener = TcpListener::bind(addr).await.expect("Cannot run server");
@@ -31,26 +35,25 @@ async fn handle_client(id: ClientId, stream: TcpStream, event_tx: Sender<GameEve
         })
         .await;
 
-    const MAX_LINE_LEN: usize = 16 * 1024;
     let (read_half, mut write_half) = stream.into_split();
-    let mut lines = BufReader::new(read_half).lines();
+    let mut lines = FramedRead::new(read_half, LinesCodec::new_with_max_length(MAX_LINE_LEN));
 
     loop {
         tokio::select! {
-            line = lines.next_line() => {
+            line = lines.next() => {
                 match line {
-                    Ok(Some(line)) => {
-                        if line.len() > MAX_LINE_LEN {
-                            break;
-                        }
-
+                    Some(Ok(line)) => {
                         let line = line.trim().to_string();
                         // Keep command delivery bounded and nonblocking.
                         if event_tx.send(GameEvent::Command { id, text: line }).await.is_err() {
                             break;
                         }
                     }
-                    Ok(None) | Err(_) => break,
+                    Some(Err(LinesCodecError::MaxLineLengthExceeded)) => {
+                        let _ = write_half.write_all(b"Error: line too long\n").await;
+                        break;
+                    }
+                    Some(Err(_)) | None => break,
                 }
             }
             message = outbound_rx.recv() => {
