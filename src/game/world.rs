@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 
-use tokio::sync::mpsc::{Sender, error::TrySendError};
-
 use crate::game::{
     event::ClientId,
     player::{Player, PlayerId},
@@ -34,19 +32,6 @@ impl World {
 
     pub fn player_id(&self, client_id: ClientId) -> Option<PlayerId> {
         self.connections.get(&client_id).copied()
-    }
-
-    pub fn send_to(&self, player_id: PlayerId, message: impl Into<String>) -> Result<(), String> {
-        let player = self
-            .players
-            .get(&player_id)
-            .ok_or_else(|| "Player does not exist".to_string())?;
-
-        match player.tx().try_send(message.into()) {
-            Ok(()) => Ok(()),
-            Err(TrySendError::Full(_)) => Err("Client message queue is full".to_string()),
-            Err(TrySendError::Closed(_)) => Err("Client disconnected".to_string()),
-        }
     }
 
     pub fn describe_current_room(&self, player_id: PlayerId) -> Result<String, String> {
@@ -100,26 +85,17 @@ impl World {
         Ok(())
     }
 
-    pub fn connect(&mut self, id: ClientId, tx: Sender<String>) {
+    pub fn connect(&mut self, id: ClientId) -> PlayerId {
         let player_id = PlayerId::new(id.value());
         let player_name = format!("Player_{}", player_id.value());
-
-        match tx.try_send("Welcome to the server!\n".to_string()) {
-            Ok(()) => {}
-            Err(TrySendError::Full(_)) => {
-                eprintln!("Could not send welcome message: queue is full.")
-            }
-            Err(TrySendError::Closed(_)) => {
-                eprintln!("Could not send welcome message: client disconnected.")
-            }
-        }
         
-        let player = Player::new(player_name, RoomId::new(1), tx);
-
+        let player = Player::new(player_name, RoomId::new(1));
         self.players.insert(player_id, player);
         self.connections.insert(id, player_id);
 
         println!("Player_{} has connected.", player_id.value());
+
+        player_id
     }
 
     pub fn disconnect(&mut self, id: ClientId) {
