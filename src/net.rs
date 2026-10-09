@@ -1,7 +1,6 @@
 use std::{
     io::{BufReader, Read, Write},
     net::{TcpListener, TcpStream},
-    thread,
 };
 
 use tokio::sync::mpsc::Sender;
