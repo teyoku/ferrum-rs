@@ -120,19 +120,19 @@ pub async fn run_game_world(mut event_rx: Receiver<RuntimeEvent>) {
             RuntimeEvent::NewConnection { id, tx } => {
                 sessions.insert(id, tx);
                 let effects = game.handle(GameEvent::Connected { id });
-                apply_effects(effects, &mut sessions);
+                apply_effects(effects, &mut sessions, &game.world);
             }
             RuntimeEvent::GameEvent(game_event) => {
-                let id_to_remove = if let GameEvent::Disconnected { id } = &game_event {
+                let disconnected_id = if let GameEvent::Disconnected { id } = &game_event {
                     Some(*id)
                 } else {
                     None
                 };
 
                 let effects = game.handle(game_event);
-                apply_effects(effects, &mut sessions);
+                apply_effects(effects, &mut sessions, &game.world);
 
-                if let Some(id) = id_to_remove {
+                if let Some(id) = disconnected_id {
                     sessions.remove(&id);
                 }
             }
@@ -140,7 +140,11 @@ pub async fn run_game_world(mut event_rx: Receiver<RuntimeEvent>) {
     }
 }
 
-fn apply_effects(effects: Vec<EngineEffect>, sessions: &mut HashMap<ClientId, Sender<String>>) {
+fn apply_effects(
+    effects: Vec<EngineEffect>,
+    sessions: &mut HashMap<ClientId, Sender<String>>,
+    world: &World,
+) {
     for effect in effects {
         match effect {
             EngineEffect::Send {
@@ -151,7 +155,27 @@ fn apply_effects(effects: Vec<EngineEffect>, sessions: &mut HashMap<ClientId, Se
                     let _ = tx.try_send(message);
                 }
             }
-            EngineEffect::Broadcast { audience, message } => todo!(),
+            EngineEffect::Broadcast { audience, message } => match audience {
+                event::Audience::Room { room_id, except } => {
+                    for (&client_id, &player_id) in world.connections() {
+                        if Some(client_id) == except {
+                            continue;
+                        }
+
+                        if let Some(player) = world.players().get(&player_id)
+                            && player.room() == room_id
+                            && let Some(tx) = sessions.get(&client_id)
+                        {
+                            let _ = tx.try_send(message.clone());
+                        }
+                    }
+                }
+                event::Audience::All => {
+                    for tx in sessions.values() {
+                        let _ = tx.try_send(message.clone());
+                    }
+                }
+            },
             EngineEffect::Close { session_id, .. } => {
                 sessions.remove(&session_id);
             }
