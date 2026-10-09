@@ -59,7 +59,7 @@ fn handle_client(id: ClientId, stream: TcpStream, event_tx: Sender<GameEvent>) {
                 let trimmed = text.trim().to_string();
 
                 if event_tx
-                    .send(GameEvent::Command { id, text: trimmed })
+                    .try_send(GameEvent::Command { id, text: trimmed })
                     .is_err()
                 {
                     break;
@@ -69,5 +69,5 @@ fn handle_client(id: ClientId, stream: TcpStream, event_tx: Sender<GameEvent>) {
         }
     }
 
-    let _ = event_tx.send(GameEvent::Disconnected { id });
+    let _ = event_tx.try_send(GameEvent::Disconnected { id });
 }
