@@ -1,4 +1,4 @@
-use crossbeam_channel::Sender;
+use tokio::sync::mpsc::Sender;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ClientId(u32);
