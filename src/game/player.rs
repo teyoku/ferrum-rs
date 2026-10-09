@@ -1,4 +1,4 @@
-use crossbeam_channel::Sender;
+use tokio::sync::mpsc::Sender;
 
 use crate::game::room::RoomId;
 
