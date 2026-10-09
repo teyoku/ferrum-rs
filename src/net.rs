@@ -1,5 +1,5 @@
 use std::{
-    io::{BufRead, BufReader, Write},
+    io::{BufReader, Read, Write},
     net::{TcpListener, TcpStream},
     thread,
 };
@@ -33,12 +33,10 @@ pub fn run_game_server(addr: &str, event_tx: Sender<GameEvent>) {
 fn handle_client(id: ClientId, stream: TcpStream, event_tx: Sender<GameEvent>) {
     let (tx_to_player, rx_from_game) = crossbeam_channel::bounded(256);
 
-    event_tx
-        .try_send(GameEvent::Connected {
-            id,
-            tx: tx_to_player,
-        })
-        .unwrap();
+    let _ = event_tx.try_send(GameEvent::Connected {
+        id,
+        tx: tx_to_player,
+    });
 
     let mut stream_clone = stream.try_clone().expect("Socket cloning error");
 
@@ -52,19 +50,34 @@ fn handle_client(id: ClientId, stream: TcpStream, event_tx: Sender<GameEvent>) {
         let _ = stream_clone.shutdown(std::net::Shutdown::Both);
     });
 
-    let reader = BufReader::new(stream);
-    for line in reader.lines() {
-        match line {
-            Ok(text) => {
-                let trimmed = text.trim().to_string();
+    const MAX_LINE_LEN: usize = 16 * 1024;
 
-                if event_tx
-                    .try_send(GameEvent::Command { id, text: trimmed })
-                    .is_err()
-                {
-                    break;
-                }
+    let mut reader = BufReader::new(stream);
+    let mut buffer = Vec::new();
+
+    loop {
+        if let Some(pos) = buffer.iter().position(|&byte| byte == b'\n') {
+            let line = String::from_utf8_lossy(&buffer[..pos]).trim().to_string();
+            buffer.drain(..=pos);
+
+            if event_tx
+                .try_send(GameEvent::Command { id, text: line })
+                .is_err()
+            {
+                break;
             }
+
+            continue;
+        }
+
+        if buffer.len() > MAX_LINE_LEN {
+            break;
+        }
+
+        let mut chunk = [0u8; 1024];
+        match reader.read(&mut chunk) {
+            Ok(0) => break,
+            Ok(read) => buffer.extend_from_slice(&chunk[..read]),
             Err(_) => break,
         }
     }
