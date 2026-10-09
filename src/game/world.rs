@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crossbeam_channel::Sender;
+use tokio::sync::mpsc::Sender;
 
 use crate::game::{
     event::ClientId,
