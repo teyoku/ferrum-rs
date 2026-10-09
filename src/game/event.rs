@@ -14,7 +14,10 @@ impl ClientId {
 }
 
 pub enum Audience {
-    Room(RoomId),
+    Room {
+        room_id: RoomId,
+        except: Option<ClientId>,
+    },
     All,
 }
 
