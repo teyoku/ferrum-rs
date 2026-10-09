@@ -1,29 +1,23 @@
-use std::{
-    io::{BufReader, Read, Write},
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt, BufReader},
     net::{TcpListener, TcpStream},
+    sync::mpsc::Sender,
 };
-
-use tokio::sync::mpsc::Sender;
 
 use crate::game::event::{ClientId, GameEvent};
 
 pub async fn run_game_server(addr: &str, event_tx: Sender<GameEvent>) {
-    let listener = TcpListener::bind(addr).expect("Cannot run server");
+    let listener = TcpListener::bind(addr).await.expect("Cannot run server");
     let mut id_counter = 0;
 
     println!("Server running on {addr}");
 
-    for stream in listener.incoming() {
-        match stream {
-            Ok(stream) => {
-                id_counter += 1;
-                let client_id = ClientId::new(id_counter);
-                let event_tx_clone = event_tx.clone();
+    for (stream, _) in listener.accept().await {
+        id_counter += 1;
+        let client_id = ClientId::new(id_counter);
+        let event_tx_clone = event_tx.clone();
 
-                tokio::spawn(async move { handle_client(client_id, stream, event_tx_clone).await });
-            }
-            Err(err) => println!("Connection error: {err}"),
-        }
+        tokio::spawn(async move { handle_client(client_id, stream, event_tx_clone).await });
     }
 }
 
@@ -37,15 +31,13 @@ async fn handle_client(id: ClientId, stream: TcpStream, event_tx: Sender<GameEve
         })
         .await;
 
-    let mut stream_clone = stream.try_clone().expect("Socket cloning error");
-
     while let Some(message) = rx_from_game.recv().await {
-        if stream_clone.write_all(message.as_bytes()).is_err() {
+        if stream.write_all(message.as_bytes()).await.is_err() {
             break;
         }
     }
 
-    let _ = stream_clone.shutdown(std::net::Shutdown::Both);
+    let _ = stream.shutdown().await;
 
     const MAX_LINE_LEN: usize = 16 * 1024;
 
@@ -72,7 +64,7 @@ async fn handle_client(id: ClientId, stream: TcpStream, event_tx: Sender<GameEve
         }
 
         let mut chunk = [0u8; 1024];
-        match reader.read(&mut chunk) {
+        match reader.read(&mut chunk).await {
             Ok(0) => break,
             Ok(read) => buffer.extend_from_slice(&chunk[..read]),
             Err(_) => break,
