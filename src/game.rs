@@ -1,4 +1,6 @@
-use tokio::sync::mpsc::Receiver;
+use std::collections::HashMap;
+
+use tokio::sync::mpsc::{Receiver, Sender};
 
 use crate::game::{
     command::CommandContext,
@@ -104,10 +106,55 @@ fn split_input(input: &str) -> Option<(&str, &str)> {
     }
 }
 
-pub async fn run_game_world(mut event_rx: Receiver<GameEvent>) {
+pub enum RuntimeEvent {
+    NewConnection { id: ClientId, tx: Sender<String> },
+    GameEvent(GameEvent),
+}
+
+pub async fn run_game_world(mut event_rx: Receiver<RuntimeEvent>) {
     let mut game = Game::new();
+    let mut sessions = HashMap::new();
 
     while let Some(event) = event_rx.recv().await {
-        game.handle(event);
+        match event {
+            RuntimeEvent::NewConnection { id, tx } => {
+                sessions.insert(id, tx);
+                let effects = game.handle(GameEvent::Connected { id });
+                apply_effects(effects, &mut sessions);
+            }
+            RuntimeEvent::GameEvent(game_event) => {
+                let id_to_remove = if let GameEvent::Disconnected { id } = &game_event {
+                    Some(*id)
+                } else {
+                    None
+                };
+
+                let effects = game.handle(game_event);
+                apply_effects(effects, &mut sessions);
+
+                if let Some(id) = id_to_remove {
+                    sessions.remove(&id);
+                }
+            }
+        }
+    }
+}
+
+fn apply_effects(effects: Vec<EngineEffect>, sessions: &mut HashMap<ClientId, Sender<String>>) {
+    for effect in effects {
+        match effect {
+            EngineEffect::Send {
+                session_id,
+                message,
+            } => {
+                if let Some(tx) = sessions.get(&session_id) {
+                    let _ = tx.try_send(message);
+                }
+            }
+            EngineEffect::Broadcast { audience, message } => todo!(),
+            EngineEffect::Close { session_id, reason } => {
+                sessions.remove(&session_id);
+            }
+        }
     }
 }
