@@ -1,4 +1,4 @@
-use crossbeam_channel::Receiver;
+use tokio::sync::mpsc::Receiver;
 
 use crate::game::{
     command::CommandContext,
@@ -89,10 +89,10 @@ fn split_input(input: &str) -> Option<(&str, &str)> {
     }
 }
 
-pub fn run_game_world(event_rx: Receiver<GameEvent>) {
+pub async fn run_game_world(mut event_rx: Receiver<GameEvent>) {
     let mut game = Game::new();
 
-    while let Ok(event) = event_rx.recv() {
+    while let Some(event) = event_rx.recv().await {
         game.handle(event);
     }
 }
