@@ -1,5 +1,5 @@
 use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt, BufReader},
+    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     net::{TcpListener, TcpStream},
     sync::mpsc::Sender,
 };
@@ -12,7 +12,8 @@ pub async fn run_game_server(addr: &str, event_tx: Sender<GameEvent>) {
 
     println!("Server running on {addr}");
 
-    for (stream, _) in listener.accept().await {
+    loop {
+        let (stream, _) = listener.accept().await.expect("Cannot accept connection");
         id_counter += 1;
         let client_id = ClientId::new(id_counter);
         let event_tx_clone = event_tx.clone();
@@ -21,8 +22,8 @@ pub async fn run_game_server(addr: &str, event_tx: Sender<GameEvent>) {
     }
 }
 
-async fn handle_client(id: ClientId, mut stream: TcpStream, event_tx: Sender<GameEvent>) {
-    let (tx_to_player, mut rx_from_game) = tokio::sync::mpsc::channel(256);
+async fn handle_client(id: ClientId, stream: TcpStream, event_tx: Sender<GameEvent>) {
+    let (tx_to_player, mut outbound_rx) = tokio::sync::mpsc::channel(256);
 
     let _ = event_tx
         .send(GameEvent::Connected {
@@ -31,45 +32,41 @@ async fn handle_client(id: ClientId, mut stream: TcpStream, event_tx: Sender<Gam
         })
         .await;
 
-    while let Some(message) = rx_from_game.recv().await {
-        if stream.write_all(message.as_bytes()).await.is_err() {
-            break;
-        }
-    }
-
-    let _ = stream.shutdown().await;
-
     const MAX_LINE_LEN: usize = 16 * 1024;
-
-    let mut reader = BufReader::new(stream);
-    let mut buffer = Vec::new();
+    let (read_half, mut write_half) = stream.into_split();
+    let mut lines = BufReader::new(read_half).lines();
 
     loop {
-        if let Some(pos) = buffer.iter().position(|&byte| byte == b'\n') {
-            let line = String::from_utf8_lossy(&buffer[..pos]).trim().to_string();
-            buffer.drain(..=pos);
+        tokio::select! {
+            line = lines.next_line() => {
+                match line {
+                    Ok(Some(line)) => {
+                        if line.len() > MAX_LINE_LEN {
+                            break;
+                        }
 
-            if event_tx
-                .try_send(GameEvent::Command { id, text: line })
-                .is_err()
-            {
-                break;
+                        let line = line.trim().to_string();
+                        // Keep command delivery bounded and nonblocking.
+                        if event_tx.try_send(GameEvent::Command { id, text: line }).is_err() {
+                            break;
+                        }
+                    }
+                    Ok(None) | Err(_) => break,
+                }
             }
-
-            continue;
-        }
-
-        if buffer.len() > MAX_LINE_LEN {
-            break;
-        }
-
-        let mut chunk = [0u8; 1024];
-        match reader.read(&mut chunk).await {
-            Ok(0) => break,
-            Ok(read) => buffer.extend_from_slice(&chunk[..read]),
-            Err(_) => break,
+            message = outbound_rx.recv() => {
+                match message {
+                    Some(message) => {
+                        if write_half.write_all(message.as_bytes()).await.is_err() {
+                            break;
+                        }
+                    }
+                    None => break,
+                }
+            }
         }
     }
 
+    let _ = write_half.shutdown().await;
     let _ = event_tx.send(GameEvent::Disconnected { id }).await;
 }
