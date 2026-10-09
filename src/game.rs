@@ -2,7 +2,7 @@ use tokio::sync::mpsc::Receiver;
 
 use crate::game::{
     command::CommandContext,
-    event::{ClientId, GameEvent},
+    event::{ClientId, EngineEffect, GameEvent},
     registry::CommandRegistry,
     world::World,
 };
@@ -32,28 +32,41 @@ impl Game {
         }
     }
 
-    pub fn handle(&mut self, event: GameEvent) {
+    pub fn handle(&mut self, event: GameEvent) -> Vec<EngineEffect> {
+        let mut effects = Vec::new();
         match event {
-            GameEvent::Connected { id, tx } => self.world.connect(id, tx),
-            GameEvent::Command { id, text } => self.dispatch(id, &text),
+            GameEvent::Connected { id } => {
+                self.world.connect(id);
+                effects.push(EngineEffect::Send {
+                    session_id: id,
+                    message: "Welcome to the server!\n".to_string(),
+                });
+            }
+            GameEvent::Command { id, text } => self.dispatch(id, &text, &mut effects),
             GameEvent::Disconnected { id } => self.world.disconnect(id),
         }
+
+        effects
     }
 
-    fn dispatch(&mut self, client_id: ClientId, input: &str) {
+    fn dispatch(&mut self, client_id: ClientId, input: &str, effects: &mut Vec<EngineEffect>) {
         let Some(player_id) = self.world.player_id(client_id) else {
             return;
         };
 
         let Some((command_name, args)) = split_input(input) else {
-            let _ = self.world.send_to(player_id, "Please write a command\n");
+            effects.push(EngineEffect::Send {
+                session_id: client_id,
+                message: "Please write a command\n".to_string(),
+            });
             return;
         };
 
         let Some(command) = self.commands.resolve(command_name) else {
-            let _ = self
-                .world
-                .send_to(player_id, format!("Unknown command: {command_name}\n"));
+            effects.push(EngineEffect::Send {
+                session_id: client_id,
+                message: format!("Unknown command: {command_name}\n"),
+            });
             return;
         };
 
@@ -63,12 +76,14 @@ impl Game {
             client_id,
             player_id,
             args,
+            effects,
         };
 
         if let Err(error) = command.execute(&mut context) {
-            let _ = self
-                .world
-                .send_to(player_id, format!("Command Error: {error}\n"));
+            context.effects.push(EngineEffect::Send {
+                session_id: client_id,
+                message: format!("Command Error: {error}\n"),
+            });
         }
     }
 }
