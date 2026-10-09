@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc::{Sender, error::TrySendError};
 
 use crate::game::{
     event::ClientId,
@@ -42,10 +42,11 @@ impl World {
             .get(&player_id)
             .ok_or_else(|| "Player does not exist".to_string())?;
 
-        player
-            .tx()
-            .send(message.into())
-            .map_err(|_| "Client disconnected".to_string())
+        match player.tx().try_send(message.into()) {
+            Ok(()) => Ok(()),
+            Err(TrySendError::Full(_)) => Err("Client message queue is full".to_string()),
+            Err(TrySendError::Closed(_)) => Err("Client disconnected".to_string()),
+        }
     }
 
     pub fn describe_current_room(&self, player_id: PlayerId) -> Result<String, String> {
@@ -103,7 +104,16 @@ impl World {
         let player_id = PlayerId::new(id.value());
         let player_name = format!("Player_{}", player_id.value());
 
-        tx.send("Welcome to the server!\n".to_string()).unwrap();
+        match tx.try_send("Welcome to the server!\n".to_string()) {
+            Ok(()) => {}
+            Err(TrySendError::Full(_)) => {
+                eprintln!("Could not send welcome message: queue is full.")
+            }
+            Err(TrySendError::Closed(_)) => {
+                eprintln!("Could not send welcome message: client disconnected.")
+            }
+        }
+        
         let player = Player::new(player_name, RoomId::new(1), tx);
 
         self.players.insert(player_id, player);
