@@ -1,4 +1,9 @@
-use crate::game::{event::ClientId, player::PlayerId, registry::CommandRegistry, world::World};
+use crate::game::{
+    event::{ClientId, EngineEffect},
+    player::PlayerId,
+    registry::CommandRegistry,
+    world::World,
+};
 
 pub type CommandResult = Result<(), String>;
 
@@ -8,11 +13,16 @@ pub struct CommandContext<'a> {
     pub client_id: ClientId,
     pub player_id: PlayerId,
     pub args: &'a str,
+    pub effects: &'a mut Vec<EngineEffect>,
 }
 
 impl<'a> CommandContext<'a> {
-    pub fn send(&self, message: impl Into<String>) -> CommandResult {
-        self.world.send_to(self.player_id, message)
+    pub fn send(&mut self, message: impl Into<String>) -> CommandResult {
+        self.effects.push(EngineEffect::Send {
+            session_id: self.client_id,
+            message: message.into(),
+        });
+        Ok(())
     }
 }
 
