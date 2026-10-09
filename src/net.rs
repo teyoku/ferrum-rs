@@ -12,8 +12,7 @@ pub async fn run_game_server(addr: &str, event_tx: Sender<GameEvent>) {
 
     println!("Server running on {addr}");
 
-    loop {
-        let (stream, _) = listener.accept().await.expect("Cannot accept connection");
+    while let Ok((stream, _)) = listener.accept().await {
         id_counter += 1;
         let client_id = ClientId::new(id_counter);
         let event_tx_clone = event_tx.clone();
