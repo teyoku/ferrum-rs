@@ -152,7 +152,7 @@ fn apply_effects(effects: Vec<EngineEffect>, sessions: &mut HashMap<ClientId, Se
                 }
             }
             EngineEffect::Broadcast { audience, message } => todo!(),
-            EngineEffect::Close { session_id, reason } => {
+            EngineEffect::Close { session_id, .. } => {
                 sessions.remove(&session_id);
             }
         }
