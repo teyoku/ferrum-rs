@@ -4,11 +4,11 @@ use std::{
     thread,
 };
 
-use crossbeam_channel::Sender;
+use tokio::sync::mpsc::Sender;
 
 use crate::game::event::{ClientId, GameEvent};
 
-pub fn run_game_server(addr: &str, event_tx: Sender<GameEvent>) {
+pub async fn run_game_server(addr: &str, event_tx: Sender<GameEvent>) {
     let listener = TcpListener::bind(addr).expect("Cannot run server");
     let mut id_counter = 0;
 
@@ -21,22 +21,22 @@ pub fn run_game_server(addr: &str, event_tx: Sender<GameEvent>) {
                 let client_id = ClientId::new(id_counter);
                 let event_tx_clone = event_tx.clone();
 
-                thread::spawn(move || {
-                    handle_client(client_id, stream, event_tx_clone);
-                });
+                tokio::spawn(async move { handle_client(client_id, stream, event_tx_clone).await });
             }
             Err(err) => println!("Connection error: {err}"),
         }
     }
 }
 
-fn handle_client(id: ClientId, stream: TcpStream, event_tx: Sender<GameEvent>) {
+async fn handle_client(id: ClientId, stream: TcpStream, event_tx: Sender<GameEvent>) {
     let (tx_to_player, rx_from_game) = crossbeam_channel::bounded(256);
 
-    let _ = event_tx.try_send(GameEvent::Connected {
-        id,
-        tx: tx_to_player,
-    });
+    let _ = event_tx
+        .send(GameEvent::Connected {
+            id,
+            tx: tx_to_player,
+        })
+        .await;
 
     let mut stream_clone = stream.try_clone().expect("Socket cloning error");
 
@@ -82,5 +82,5 @@ fn handle_client(id: ClientId, stream: TcpStream, event_tx: Sender<GameEvent>) {
         }
     }
 
-    let _ = event_tx.try_send(GameEvent::Disconnected { id });
+    let _ = event_tx.send(GameEvent::Disconnected { id }).await;
 }
