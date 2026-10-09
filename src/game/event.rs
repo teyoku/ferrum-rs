@@ -36,7 +36,7 @@ pub enum EngineEffect {
 }
 
 pub enum GameEvent {
-    Connected { id: ClientId, tx: Sender<String> },
+    Connected { id: ClientId },
 
     Command { id: ClientId, text: String },
 
