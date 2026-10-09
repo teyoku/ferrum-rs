@@ -30,6 +30,10 @@ impl World {
         &self.players
     }
 
+    pub fn connections(&self) -> &HashMap<ClientId, PlayerId> {
+        &self.connections
+    }
+
     pub fn player_id(&self, client_id: ClientId) -> Option<PlayerId> {
         self.connections.get(&client_id).copied()
     }
