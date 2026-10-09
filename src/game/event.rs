@@ -1,5 +1,7 @@
 use tokio::sync::mpsc::Sender;
 
+use crate::game::room::RoomId;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ClientId(u32);
 
@@ -11,6 +13,11 @@ impl ClientId {
     pub fn value(&self) -> u32 {
         self.0
     }
+}
+
+pub enum Audience {
+    Room(RoomId),
+    All,
 }
 
 pub enum GameEvent {
