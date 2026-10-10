@@ -1,3 +1,5 @@
+pub mod server;
+
 use std::error::Error;
 
 use tokio::{
