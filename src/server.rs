@@ -229,3 +229,42 @@ impl ServerHandle {
             .map_err(|_| ServerStopped)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn reports_connected_session_count() {
+        let server = ServerActor::spawn();
+
+        let (output, mut events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+
+        let address = "127.0.0.1:4000".parse().unwrap();
+
+        let session_id = server.connect(address, output).await.unwrap();
+
+        server.input(session_id, "who".to_owned()).await.unwrap();
+
+        assert!(matches!(
+            events.recv().await,
+            Some(SessionEvent::Text(text))
+                if text == "Players online: 1\r\n"
+        ));
+    }
+
+    #[tokio::test]
+    async fn quit_closes_the_session() {
+        let server = ServerActor::spawn();
+
+        let (output, mut events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+
+        let address = "127.0.0.1:4000".parse().unwrap();
+
+        let session_id = server.connect(address, output).await.unwrap();
+
+        server.input(session_id, "quit".to_owned()).await.unwrap();
+
+        assert!(matches!(events.recv().await, Some(SessionEvent::Close)));
+    }
+}
