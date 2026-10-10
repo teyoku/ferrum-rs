@@ -35,7 +35,7 @@ enum ServerCommand {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ServerHandle {
     sender: mpsc::Sender<ServerCommand>,
 }
