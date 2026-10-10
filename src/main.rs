@@ -5,10 +5,6 @@ use tokio::net::TcpListener;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    unsafe {
-        env::set_var("RUST_LOG", "info,warn,error,test");
-    }
-
     dotenvy::dotenv()?;
 
     let host = env::var("HOST")?;
