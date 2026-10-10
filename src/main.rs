@@ -19,7 +19,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let listener = TcpListener::bind(addr).await?;
 
-    while let Ok((stream, socket)) = listener.accept().await {
+    while let Ok((stream, addr)) = listener.accept().await {
         tokio::spawn(async {
             if let Err(err) = process_client(stream).await {
                 println!("An error occurred; error={err:?}");
