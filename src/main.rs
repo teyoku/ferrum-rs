@@ -1,27 +1,37 @@
 use std::{env, error::Error};
 
-use ferrum_rs::process_client;
+use ferrum_rs::{ServerActor, process_client};
 use tokio::net::TcpListener;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    dotenvy::dotenv()?;
-
-    let host = env::var("HOST")?;
-    let port = env::var("PORT")?;
-    let addr = format!("{host}:{port}");
+    dotenvy::dotenv().ok();
 
     pretty_env_logger::init();
 
-    let listener = TcpListener::bind(addr).await?;
+    let host = env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_owned());
+    let port = env::var("PORT").unwrap_or_else(|_| "4000".to_owned());
+    let address = format!("{host}:{port}");
 
-    while let Ok((stream, addr)) = listener.accept().await {
-        tokio::spawn(async {
-            if let Err(err) = process_client(stream).await {
-                println!("An error occurred; error={err:?}");
+    let listener = TcpListener::bind(&address).await?;
+
+    let server = ServerActor::spawn();
+
+    println!("Ferrum MUD is listening on {address}");
+
+    loop {
+        let (stream, peer_address) = listener.accept().await?;
+
+        let server = server.clone();
+
+        tokio::spawn(async move {
+            println!("Client connected: {peer_address}");
+
+            if let Err(error) = process_client(stream, server).await {
+                eprintln!("Client {peer_address} failed: {error}");
             }
+
+            println!("Client disconnected: {peer_address}");
         });
     }
-
-    Ok(())
 }
