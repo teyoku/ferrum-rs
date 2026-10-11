@@ -50,7 +50,7 @@ pub struct ServerActor {
     sessions: HashMap<SessionId, ConnectedSession>,
     next_session_id: u64,
     receiver: mpsc::Receiver<ServerCommand>,
-    commands: CommandRegistry
+    commands: CommandRegistry,
 }
 
 #[derive(Debug)]
@@ -86,7 +86,7 @@ impl ServerActor {
             sessions: HashMap::new(),
             next_session_id: 1,
             receiver,
-            commands
+            commands,
         };
 
         tokio::spawn(actor.run());
@@ -134,43 +134,16 @@ impl ServerActor {
     }
 
     fn handle_input(&mut self, session_id: SessionId, line: &str) {
-        let line = line.trim();
-
-        if line.eq_ignore_ascii_case("quit") {
-            self.send_to(session_id, SessionEvent::Close);
+        let Some(invocation) = self.commands.resolve(line) else {
+            self.send_text(session_id, "Unknown command.\r\n".to_owned());
             return;
+        };
+
+        let mut context = CommandContext::new(session_id, invocation.args, self);
+
+        if let Err(error) = invocation.command.execute(&mut context) {
+            context.reply(format!("Command error: {error}\r\n"));
         }
-
-        if line.eq_ignore_ascii_case("who") {
-            let count = self.sessions.len();
-
-            self.send_to(
-                session_id,
-                SessionEvent::Text(format!("Players online: {count}\r\n")),
-            );
-
-            return;
-        }
-
-        if let Some(message) = line.strip_prefix("say ") {
-            let message = message.trim();
-
-            if message.is_empty() {
-                self.send_to(
-                    session_id,
-                    SessionEvent::Text("What do you want to say?\r\n".to_owned()),
-                );
-            } else {
-                self.broadcast(session_id, message);
-            }
-
-            return;
-        }
-
-        self.send_to(
-            session_id,
-            SessionEvent::Text(format!("You said: {line}\r\n")),
-        );
     }
 
     fn send_to(&mut self, session_id: SessionId, event: SessionEvent) {
