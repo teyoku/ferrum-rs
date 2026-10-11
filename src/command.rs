@@ -21,7 +21,7 @@ pub struct CommandContext<'a> {
 }
 
 impl<'a> CommandContext<'a> {
-    pub fn new(session_id: SessionId, args: &'a str, server: &'a mut ServerActor) -> Self {
+    pub(crate) fn new(session_id: SessionId, args: &'a str, server: &'a mut ServerActor) -> Self {
         Self {
             session_id,
             args,

@@ -182,19 +182,19 @@ impl ServerActor {
         }
     }
 
-    pub fn send_text(&mut self, session_id: SessionId, text: String) {
+    pub(crate) fn send_text(&mut self, session_id: SessionId, text: String) {
         self.send_to(session_id, SessionEvent::Text(text));
     }
 
-    pub fn close_session(&mut self, session_id: SessionId) {
+    pub(crate) fn close_session(&mut self, session_id: SessionId) {
         self.send_to(session_id, SessionEvent::Close);
     }
 
-    pub fn online_count(&self) -> usize {
+    pub(crate) fn online_count(&self) -> usize {
         self.sessions.len()
     }
 
-    pub fn broadcast_from(&mut self, session_id: SessionId, message: &str) {
+    pub(crate) fn broadcast_from(&mut self, session_id: SessionId, message: &str) {
         self.broadcast(session_id, message);
     }
 }
