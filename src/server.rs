@@ -2,6 +2,11 @@ use std::{collections::HashMap, error::Error, fmt, net::SocketAddr};
 
 use tokio::sync::{mpsc, oneshot};
 
+use crate::{
+    command::{CommandContext, CommandRegistry},
+    commands::register_builtins,
+};
+
 pub const SERVER_MAILBOX_CAPACITY: usize = 256;
 pub const SESSION_MAILBOX_CAPACITY: usize = 32;
 
@@ -45,6 +50,7 @@ pub struct ServerActor {
     sessions: HashMap<SessionId, ConnectedSession>,
     next_session_id: u64,
     receiver: mpsc::Receiver<ServerCommand>,
+    commands: CommandRegistry
 }
 
 #[derive(Debug)]
@@ -66,12 +72,21 @@ impl Error for ServerStopped {}
 
 impl ServerActor {
     pub fn spawn() -> ServerHandle {
+        let mut commands = CommandRegistry::new();
+
+        register_builtins(&mut commands);
+
+        Self::spawn_with_registry(commands)
+    }
+
+    pub fn spawn_with_registry(commands: CommandRegistry) -> ServerHandle {
         let (sender, receiver) = mpsc::channel(SERVER_MAILBOX_CAPACITY);
 
         let actor = Self {
             sessions: HashMap::new(),
             next_session_id: 1,
             receiver,
+            commands
         };
 
         tokio::spawn(actor.run());
