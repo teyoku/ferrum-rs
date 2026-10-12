@@ -1,6 +1,7 @@
 use crate::command::{Command, CommandContext, CommandRegistry, CommandResult};
 
 pub fn register_builtins(registry: &mut CommandRegistry) {
+    registry.register(NameCommand);
     registry.register(WhoCommand);
     registry.register(SayCommand);
     registry.register(QuitCommand);
@@ -62,6 +63,30 @@ impl Command for QuitCommand {
 
     fn execute(&self, context: &mut CommandContext<'_>) -> CommandResult {
         context.close();
+
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub struct NameCommand;
+
+impl Command for NameCommand {
+    fn name(&self) -> &'static str {
+        "name"
+    }
+
+    fn execute(&self, context: &mut CommandContext<'_>) -> CommandResult {
+        let requested_name = context.args.trim().to_owned();
+
+        match context.set_name(&requested_name) {
+            Ok(()) => context.reply(format!(
+                "You are now known as \
+                 {requested_name}.\r\n"
+            )),
+
+            Err(err) => context.reply(format!("Cannot use that name: {err}.\r\n")),
+        }
 
         Ok(())
     }
