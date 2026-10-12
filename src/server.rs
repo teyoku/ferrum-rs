@@ -244,6 +244,18 @@ impl ServerActor {
 
         Ok(())
     }
+
+    pub(crate) fn online_names(&self) -> Vec<String> {
+        let mut names: Vec<_> = self
+            .sessions
+            .values()
+            .map(ConnectedSession::display_name)
+            .collect();
+
+        names.sort_unstable_by_key(|name| name.to_lowercase());
+
+        names
+    }
 }
 
 impl ServerHandle {
