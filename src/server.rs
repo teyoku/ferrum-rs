@@ -175,7 +175,10 @@ impl ServerActor {
     }
 
     fn broadcast(&mut self, sender_id: SessionId, message: &str) {
-        let Some(sender_address) = self.sessions.get(&sender_id).map(|session| session.address)
+        let Some(sender_name) = self
+            .sessions
+            .get(&sender_id)
+            .map(ConnectedSession::display_name)
         else {
             return;
         };
@@ -186,7 +189,7 @@ impl ServerActor {
             let text = if session_id == sender_id {
                 format!("You say: {message}\r\n")
             } else {
-                format!("{sender_address} says: {message}\r\n")
+                format!("{sender_name} says: {message}\r\n")
             };
 
             if session.output.try_send(SessionEvent::Text(text)).is_err() {
