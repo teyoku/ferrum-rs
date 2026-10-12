@@ -3,8 +3,9 @@ use std::{collections::HashMap, error::Error, fmt, net::SocketAddr};
 use tokio::sync::{mpsc, oneshot};
 
 use crate::{
-    command::{CommandContext, CommandRegistry},
+    command::{CommandContext, CommandRegistry, CommandResult},
     commands::register_builtins,
+    player::{Player, PlayerNameError},
 };
 
 pub const SERVER_MAILBOX_CAPACITY: usize = 256;
@@ -57,6 +58,16 @@ pub struct ServerActor {
 pub struct ConnectedSession {
     address: SocketAddr,
     output: mpsc::Sender<SessionEvent>,
+    player: Option<Player>,
+}
+
+impl ConnectedSession {
+    pub fn display_name(&self) -> String {
+        self.player
+            .as_ref()
+            .map(|player| player.name().to_owned())
+            .unwrap_or_else(|| self.address.to_string())
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -125,8 +136,14 @@ impl ServerActor {
             .checked_add(1)
             .expect("session identifier overflowed");
 
-        self.sessions
-            .insert(session_id, ConnectedSession { address, output });
+        self.sessions.insert(
+            session_id,
+            ConnectedSession {
+                address,
+                output,
+                player: None,
+            },
+        );
 
         if reply.send(session_id).is_err() {
             self.sessions.remove(&session_id);
@@ -196,6 +213,36 @@ impl ServerActor {
 
     pub(crate) fn broadcast_from(&mut self, session_id: SessionId, message: &str) {
         self.broadcast(session_id, message);
+    }
+
+    pub(crate) fn set_player_name(
+        &mut self,
+        session_id: SessionId,
+        name: &str,
+    ) -> Result<(), PlayerNameError> {
+        let player = Player::new(name)?;
+        let normalized_name = player.name().to_lowercase();
+
+        let already_in_use = self.sessions.iter().any(|(&other_id, session)| {
+            other_id != session_id
+                && session
+                    .player
+                    .as_ref()
+                    .is_some_and(|other| other.name().to_lowercase() == normalized_name)
+        });
+
+        if already_in_use {
+            return Err(PlayerNameError::AlreadyInUse);
+        }
+
+        let session = self
+            .sessions
+            .get_mut(&session_id)
+            .ok_or(PlayerNameError::SessionNotFound)?;
+
+        session.player = Some(player);
+
+        Ok(())
     }
 }
 
