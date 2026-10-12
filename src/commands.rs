@@ -20,10 +20,7 @@ impl Command for WhoCommand {
         let count = names.len();
         let list = names.join("\r\n");
 
-        context.reply(format!(
-            "Players online: {count}\r\n
-            {list}\r\n"
-        ));
+        context.reply(format!("Players online: ({count})\r\n{list}\r\n"));
 
         Ok(())
     }
