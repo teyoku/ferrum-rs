@@ -210,10 +210,6 @@ impl ServerActor {
         self.send_to(session_id, SessionEvent::Close);
     }
 
-    pub(crate) fn online_count(&self) -> usize {
-        self.sessions.len()
-    }
-
     pub(crate) fn broadcast_from(&mut self, session_id: SessionId, message: &str) {
         self.broadcast(session_id, message);
     }
