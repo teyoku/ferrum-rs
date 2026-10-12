@@ -16,9 +16,14 @@ impl Command for WhoCommand {
     }
 
     fn execute(&self, context: &mut CommandContext<'_>) -> CommandResult {
-        let count = context.online_count();
+        let names = context.online_names();
+        let count = names.len();
+        let list = names.join("\r\n");
 
-        context.reply(format!("Players online: {count}\r\n"));
+        context.reply(format!(
+            "Players online: {count}\r\n
+            {list}\r\n"
+        ));
 
         Ok(())
     }
@@ -42,7 +47,7 @@ impl Command for SayCommand {
         if message.is_empty() {
             context.reply("What do you want to say?\r\n");
         } else {
-            context.say(&message);
+            context.say(&message)?;
         }
 
         Ok(())
