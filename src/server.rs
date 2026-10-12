@@ -3,7 +3,7 @@ use std::{collections::HashMap, error::Error, fmt, net::SocketAddr};
 use tokio::sync::{mpsc, oneshot};
 
 use crate::{
-    command::{CommandContext, CommandRegistry, CommandResult},
+    command::{CommandContext, CommandRegistry},
     commands::register_builtins,
     player::{Player, PlayerNameError},
 };
