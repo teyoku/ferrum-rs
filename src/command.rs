@@ -36,12 +36,16 @@ impl<'a> CommandContext<'a> {
         self.server.send_text(self.session_id, text.into());
     }
 
-    pub fn online_count(&self) -> usize {
-        self.server.online_count()
+    pub fn online_names(&self) -> Vec<String> {
+        self.server.online_names()
     }
 
-    pub fn say(&mut self, message: &str) {
-        self.server.broadcast_from(self.session_id, message);
+    pub fn set_name(&mut self, name: &str) -> Result<(), PlayerNameError> {
+        self.server.set_player_name(self.session_id, name)
+    }
+
+    pub fn say(&mut self, message: &str) -> CommandResult {
+        self.server.broadcast_from(self.session_id, message)
     }
 
     pub fn close(&mut self) {
