@@ -1,10 +1,12 @@
 pub mod command;
 pub mod commands;
+pub mod player;
 pub mod server;
 pub mod session;
-pub mod player;
 
 pub use command::{Command, CommandContext, CommandRegistry};
+
+pub use player::{Player, PlayerNameError};
 
 pub use server::{ServerActor, ServerHandle};
 
