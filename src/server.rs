@@ -200,7 +200,8 @@ impl ServerActor {
             return;
         }
 
-        let mut context = CommandContext::new(session_id, invocation.args, self);
+        let mut context =
+            CommandContext::new(session_id, &invocation.invoked_as, invocation.args, self);
 
         if let Err(error) = invocation.command.execute(&mut context) {
             context.reply(format!("Command error: {error}\r\n"));
