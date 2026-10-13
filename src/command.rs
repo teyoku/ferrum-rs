@@ -23,14 +23,21 @@ pub trait Command: Debug + Sync + Send {
 
 pub struct CommandContext<'a> {
     pub session_id: SessionId,
+    pub invoked_as: &'a str,
     pub args: &'a str,
     server: &'a mut ServerActor,
 }
 
 impl<'a> CommandContext<'a> {
-    pub(crate) fn new(session_id: SessionId, args: &'a str, server: &'a mut ServerActor) -> Self {
+    pub(crate) fn new(
+        session_id: SessionId,
+        invoked_as: &'a str,
+        args: &'a str,
+        server: &'a mut ServerActor,
+    ) -> Self {
         Self {
             session_id,
+            invoked_as,
             args,
             server,
         }
@@ -95,15 +102,21 @@ impl CommandRegistry {
     pub fn resolve<'a>(&self, input: &'a str) -> Option<CommandInvocation<'a>> {
         let mut parts = input.trim().splitn(2, char::is_whitespace);
 
-        let name = parts.next()?.to_lowercase();
+        let invoked_as = parts.next()?.to_lowercase();
         let args = parts.next().unwrap_or("").trim();
-        let command = self.commands.get(&name)?.clone();
 
-        Some(CommandInvocation { command, args })
+        let command = self.commands.get(&invoked_as)?.clone();
+
+        Some(CommandInvocation {
+            command,
+            invoked_as,
+            args,
+        })
     }
 }
 
 pub struct CommandInvocation<'a> {
     pub command: Arc<dyn Command>,
+    pub invoked_as: String,
     pub args: &'a str,
 }
