@@ -2,7 +2,7 @@
   <img src="media/logo.png" alt="ferrum_logo" height=250/>
 </p>
 
-# FerrumMUD — a MUD framework written in Rust
+# FerrumMUD — a MUD engine written in Rust
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
