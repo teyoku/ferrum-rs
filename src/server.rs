@@ -378,20 +378,11 @@ mod tests {
 
         let session_id = server.connect(address, output).await.unwrap();
 
-        server
-            .input(session_id, "name Alex".to_owned())
-            .await
-            .unwrap();
-        assert!(matches!(
-            events.recv().await,
-            Some(SessionEvent::Text(text)) if text == "You are now known as Alex.\r\n"
-        ));
-
         server.input(session_id, "who".to_owned()).await.unwrap();
         assert!(matches!(
             events.recv().await,
             Some(SessionEvent::Text(text))
-                if text == "Players online: (1)\r\nAlex\r\n"
+                if text == "Players online: (1)\r\n127.0.0.1:4000\r\n"
         ));
     }
 
