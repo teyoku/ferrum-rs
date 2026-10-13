@@ -14,6 +14,10 @@ pub trait Command: Debug + Sync + Send {
         &[]
     }
 
+    fn allowed_before_login(&self) -> bool {
+        false
+    }
+
     fn execute(&self, context: &mut CommandContext<'_>) -> CommandResult;
 }
 
