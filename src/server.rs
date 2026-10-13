@@ -414,11 +414,19 @@ mod tests {
 
         let session_id = server.connect(address, output).await.unwrap();
 
+        server
+            .input(session_id, "name Alex".to_owned())
+            .await
+            .unwrap();
+
+        let _ = events.recv().await;
+        let _ = events.recv().await;
+
         server.input(session_id, "who".to_owned()).await.unwrap();
         assert!(matches!(
             events.recv().await,
             Some(SessionEvent::Text(text))
-                if text == "Players online: (1)\r\n127.0.0.1:4000\r\n"
+                if text == "Players online: (1)\r\nAlex\r\n"
         ));
     }
 
@@ -435,5 +443,53 @@ mod tests {
         server.input(session_id, "quit".to_owned()).await.unwrap();
 
         assert!(matches!(events.recv().await, Some(SessionEvent::Close)));
+    }
+
+    #[tokio::test]
+    async fn game_commands_require_a_player_name() {
+        let server = ServerActor::spawn();
+
+        let (output, mut events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+
+        let address = "127.0.0.1:4000".parse().unwrap();
+
+        let session_id = server.connect(address, output).await.unwrap();
+
+        server.input(session_id, "look".to_owned()).await.unwrap();
+
+        assert!(matches!(
+            events.recv().await,
+            Some(SessionEvent::Text(text))
+                if text == "Choose a name first: name <player>.\r\n"
+        ));
+    }
+
+    #[tokio::test]
+    async fn player_can_move_between_rooms() {
+        let server = ServerActor::spawn();
+
+        let (output, mut events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+
+        let address = "127.0.0.1:4000".parse().unwrap();
+
+        let session_id = server.connect(address, output).await.unwrap();
+
+        server
+            .input(session_id, "name Alex".to_owned())
+            .await
+            .unwrap();
+
+        let _ = events.recv().await;
+        let _ = events.recv().await;
+
+        server
+            .input(session_id, "go north".to_owned())
+            .await
+            .unwrap();
+
+        assert!(matches!(
+            events.recv().await,
+            Some(SessionEvent::Text(text)) if text.contains("Rusty Tankard")
+        ));
     }
 }
