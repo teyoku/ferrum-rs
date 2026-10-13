@@ -269,7 +269,7 @@ impl ServerActor {
         let room = self
             .sessions
             .get(&session_id)
-            .and_then(|session| session.player.as_ref())
+            .and_then(ConnectedSession::player)
             .map(Player::room)
             .unwrap_or_else(|| self.world.start_room());
 
@@ -279,8 +279,7 @@ impl ServerActor {
         let already_in_use = self.sessions.iter().any(|(&other_id, session)| {
             other_id != session_id
                 && session
-                    .player
-                    .as_ref()
+                    .player()
                     .is_some_and(|other| other.name().to_lowercase() == normalized_name)
         });
 
@@ -293,7 +292,7 @@ impl ServerActor {
             .get_mut(&session_id)
             .ok_or(PlayerNameError::SessionNotFound)?;
 
-        session.player = Some(player);
+        session.state = SessionState::Playing(player);
 
         Ok(())
     }
