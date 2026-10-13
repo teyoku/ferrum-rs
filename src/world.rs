@@ -3,6 +3,12 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RoomId(u64);
 
+impl RoomId {
+    pub fn new(value: u64) -> Self {
+        Self(value)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Direction {
     North,
