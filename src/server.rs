@@ -6,7 +6,7 @@ use crate::{
     command::{CommandContext, CommandRegistry},
     commands::register_builtins,
     player::{Player, PlayerNameError},
-    world::World,
+    world::{RoomId, World},
 };
 
 pub const SERVER_MAILBOX_CAPACITY: usize = 256;
@@ -271,6 +271,36 @@ impl ServerActor {
         names.sort_unstable_by_key(|name| name.to_lowercase());
 
         names
+    }
+
+    fn current_room(&self, session_id: SessionId) -> Result<RoomId, &'static str> {
+        self.sessions
+            .get(&session_id)
+            .and_then(|session| session.player.as_ref())
+            .map(Player::room)
+            .ok_or("choose a name first")
+    }
+
+    pub(crate) fn look(&mut self, session_id: SessionId) -> Result<(), &'static str> {
+        let room = self.current_room(session_id)?;
+
+        let mut description = self.world.describe(room).ok_or("room does not exist")?;
+
+        let mut players: Vec<_> = self
+            .sessions
+            .values()
+            .filter_map(|session| session.player.as_ref())
+            .filter(|player| player.room() == room)
+            .map(|player| player.name().to_owned())
+            .collect();
+
+        players.sort_unstable_by_key(|name| name.to_lowercase());
+
+        description.push_str(&format!("Players here: {}\r\n", players.join(", ")));
+
+        self.send_text(session_id, description);
+
+        Ok(())
     }
 }
 
