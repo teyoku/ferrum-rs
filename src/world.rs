@@ -113,3 +113,18 @@ impl World {
         ))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn demo_world_has_a_two_way_path() {
+        let world = World::demo();
+        let square = world.start_room();
+
+        let tavern = world.destination(square, Direction::North).unwrap();
+
+        assert_eq!(world.destination(tavern, Direction::South), Some(square));
+    }
+}
