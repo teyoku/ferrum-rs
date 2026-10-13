@@ -4,6 +4,8 @@ pub fn register_builtins(registry: &mut CommandRegistry) {
     registry.register(NameCommand);
     registry.register(WhoCommand);
     registry.register(SayCommand);
+    registry.register(LookCommand);
+    registry.register(GoCommand);
     registry.register(QuitCommand);
 }
 
@@ -48,6 +50,43 @@ impl Command for SayCommand {
         }
 
         Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub struct LookCommand;
+
+impl Command for LookCommand {
+    fn name(&self) -> &'static str {
+        "look"
+    }
+
+    fn aliases(&self) -> &'static [&'static str] {
+        &["l"]
+    }
+
+    fn execute(&self, context: &mut CommandContext<'_>) -> CommandResult {
+        context.look()
+    }
+}
+
+#[derive(Debug)]
+pub struct GoCommand;
+
+impl Command for GoCommand {
+    fn name(&self) -> &'static str {
+        "go"
+    }
+
+    fn execute(&self, context: &mut CommandContext<'_>) -> CommandResult {
+        let direction = context.args.trim().to_owned();
+
+        if direction.is_empty() {
+            context.reply("Go where?\r\n");
+            return Ok(());
+        }
+
+        context.go(&direction)
     }
 }
 
