@@ -10,35 +10,6 @@ pub fn register_builtins(registry: &mut CommandRegistry) {
 }
 
 #[derive(Debug)]
-pub struct NameCommand;
-
-impl Command for NameCommand {
-    fn name(&self) -> &'static str {
-        "name"
-    }
-
-    fn allowed_before_login(&self) -> bool {
-        true
-    }
-
-    fn execute(&self, context: &mut CommandContext<'_>) -> CommandResult {
-        let requested_name = context.args.trim().to_owned();
-
-        match context.set_name(&requested_name) {
-            Ok(()) => {
-                context.reply(format!("You are now known as {requested_name}.\r\n"));
-
-                context.look()?;
-            }
-
-            Err(err) => context.reply(format!("Cannot use that name: {err}.\r\n")),
-        }
-
-        Ok(())
-    }
-}
-
-#[derive(Debug)]
 pub struct WhoCommand;
 
 impl Command for WhoCommand {
@@ -131,12 +102,33 @@ impl Command for QuitCommand {
         &["q", "exit"]
     }
 
-    fn allowed_before_login(&self) -> bool {
-        true
+    fn execute(&self, context: &mut CommandContext<'_>) -> CommandResult {
+        context.close();
+
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub struct NameCommand;
+
+impl Command for NameCommand {
+    fn name(&self) -> &'static str {
+        "name"
     }
 
     fn execute(&self, context: &mut CommandContext<'_>) -> CommandResult {
-        context.close();
+        let requested_name = context.args.trim().to_owned();
+
+        match context.set_name(&requested_name) {
+            Ok(()) => {
+                context.reply(format!("You are now known as {requested_name}.\r\n"));
+
+                context.look()?;
+            }
+
+            Err(err) => context.reply(format!("Cannot use that name: {err}.\r\n")),
+        }
 
         Ok(())
     }
