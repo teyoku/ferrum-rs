@@ -312,7 +312,7 @@ impl ServerActor {
     fn current_room(&self, session_id: SessionId) -> Result<RoomId, &'static str> {
         self.sessions
             .get(&session_id)
-            .and_then(|session| session.player.as_ref())
+            .and_then(ConnectedSession::player)
             .map(Player::room)
             .ok_or("choose a name first")
     }
@@ -325,7 +325,7 @@ impl ServerActor {
         let mut players: Vec<_> = self
             .sessions
             .values()
-            .filter_map(|session| session.player.as_ref())
+            .filter_map(ConnectedSession::player)
             .filter(|player| player.room() == room)
             .map(|player| player.name().to_owned())
             .collect();
@@ -356,7 +356,7 @@ impl ServerActor {
         let player = self
             .sessions
             .get_mut(&session_id)
-            .and_then(|session| session.player.as_mut())
+            .and_then(ConnectedSession::player_mut)
             .ok_or("choose a name first")?;
 
         player.move_to(destination);
