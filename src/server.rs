@@ -364,6 +364,22 @@ impl ServerActor {
 
         self.look(session_id)
     }
+
+    fn send_room(&mut self, room: RoomId, except: Option<SessionId>, text: impl Into<String>) {
+        let recipients: Vec<_> = self
+            .sessions
+            .iter()
+            .filter(|(session_id, _)| Some(**session_id) != except)
+            .filter(|(_, session)| session.player().map(Player::room) == Some(room))
+            .map(|(session_id, _)| *session_id)
+            .collect();
+
+        let text = text.into();
+
+        for session_id in recipients {
+            self.send_to(session_id, SessionEvent::Text(text.clone()));
+        }
+    }
 }
 
 impl ServerHandle {
