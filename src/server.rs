@@ -6,7 +6,7 @@ use crate::{
     command::{CommandContext, CommandRegistry},
     commands::register_builtins,
     player::{Player, PlayerNameError},
-    world::{RoomId, World},
+    world::{Direction, RoomId, World},
 };
 
 pub const SERVER_MAILBOX_CAPACITY: usize = 256;
@@ -299,6 +299,31 @@ impl ServerActor {
         description.push_str(&format!("Players here: {}\r\n", players.join(", ")));
 
         self.send_text(session_id, description);
+
+        Ok(())
+    }
+
+    pub(crate) fn go(
+        &mut self,
+        session_id: SessionId,
+        direction: &str,
+    ) -> Result<(), &'static str> {
+        let direction = Direction::parse(direction).ok_or("unknown direction")?;
+
+        let current = self.current_room(session_id)?;
+
+        let destination = self
+            .world
+            .destination(current, direction)
+            .ok_or("there is no exit that way")?;
+
+        let player = self
+            .sessions
+            .get_mut(&session_id)
+            .and_then(|session| session.player.as_mut())
+            .ok_or("choose a name first")?;
+
+        player.move_to(destination);
 
         Ok(())
     }
