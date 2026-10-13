@@ -32,7 +32,7 @@ impl Direction {
         }
     }
 
-    fn as_str(self) -> &'static str {
+    pub fn as_str(self) -> &'static str {
         match self {
             Self::North => "north",
             Self::South => "south",
@@ -42,6 +42,17 @@ impl Direction {
             Self::Down => "down",
         }
     }
+
+    pub fn opposite(self) -> Self {
+        match self {
+            Self::North => Self::South,
+            Self::South => Self::North,
+            Self::East => Self::West,
+            Self::West => Self::East,
+            Self::Up => Self::Down,
+            Self::Down => Self::Up,
+        }
+    } 
 }
 
 #[derive(Debug)]
