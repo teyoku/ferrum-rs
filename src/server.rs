@@ -446,6 +446,15 @@ mod tests {
         let _ = events.recv().await;
         let _ = events.recv().await;
 
+        let (anonymous_output, _anonymous_events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+
+        let anonymous_address = "127.0.0.1:4001".parse().unwrap();
+
+        server
+            .connect(anonymous_address, anonymous_output)
+            .await
+            .unwrap();
+
         server.input(session_id, "who".to_owned()).await.unwrap();
         assert!(matches!(
             events.recv().await,
