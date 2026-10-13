@@ -181,7 +181,7 @@ impl ServerActor {
         }
     }
 
-    fn say(&mut self, sender_id: SessionId, message: &str) -> Result<(), &'static str> {
+    pub(crate) fn say(&mut self, sender_id: SessionId, message: &str) -> Result<(), &'static str> {
         let Some((sender_name, room)) = self
             .sessions
             .get(&sender_id)
