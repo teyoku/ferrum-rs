@@ -501,28 +501,52 @@ mod tests {
     async fn player_can_move_between_rooms() {
         let server = ServerActor::spawn();
 
-        let (output, mut events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+        let (alex_output, mut alex_events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
 
-        let address = "127.0.0.1:4000".parse().unwrap();
+        let alex_address = "127.0.0.1:4000".parse().unwrap();
 
-        let session_id = server.connect(address, output).await.unwrap();
+        let alex_id = server.connect(alex_address, alex_output).await.unwrap();
+
+        let (blair_output, mut blair_events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+
+        let blair_address = "127.0.0.1:4001".parse().unwrap();
+
+        let blair_id = server.connect(blair_address, blair_output).await.unwrap();
+
+        server.input(alex_id, "name Alex".to_owned()).await.unwrap();
+
+        let _ = alex_events.recv().await;
+        let _ = alex_events.recv().await;
 
         server
-            .input(session_id, "name Alex".to_owned())
+            .input(blair_id, "name Blair".to_owned())
             .await
             .unwrap();
 
-        let _ = events.recv().await;
-        let _ = events.recv().await;
+        let _ = blair_events.recv().await;
+        let _ = blair_events.recv().await;
 
-        server
-            .input(session_id, "go north".to_owned())
-            .await
-            .unwrap();
+        server.input(alex_id, "n".to_owned()).await.unwrap();
+
+        assert!(matches!(blair_events.recv().await,
+            Some(SessionEvent::Text(text)) if text == "Alex leaves north.\r\n"));
+
+        assert!(matches!(alex_events.recv().await,
+        Some(SessionEvent::Text(text))
+            if text.contains("Rusty Tankard")));
+
+        server.input(blair_id, "north".to_owned()).await.unwrap();
 
         assert!(matches!(
-            events.recv().await,
-            Some(SessionEvent::Text(text)) if text.contains("Rusty Tankard")
+            alex_events.recv().await,
+            Some(SessionEvent::Text(text))
+                if text == "Blair arrives from south.\r\n"
+        ));
+
+        assert!(matches!(
+            blair_events.recv().await,
+            Some(SessionEvent::Text(text))
+                if text.contains("Rusty Tankard")
         ));
     }
 }
