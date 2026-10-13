@@ -325,7 +325,7 @@ impl ServerActor {
 
         player.move_to(destination);
 
-        Ok(())
+        self.look(session_id)
     }
 }
 
