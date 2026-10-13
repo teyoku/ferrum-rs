@@ -3,6 +3,7 @@ pub mod commands;
 pub mod player;
 pub mod server;
 pub mod session;
+pub mod world;
 
 pub use command::{Command, CommandContext, CommandRegistry};
 
