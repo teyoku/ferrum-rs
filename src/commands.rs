@@ -107,8 +107,18 @@ impl Command for GoCommand {
         "go"
     }
 
+    fn aliases(&self) -> &'static [&'static str] {
+        &[
+            "north", "n", "south", "s", "east", "e", "west", "w", "up", "u", "down", "d",
+        ]
+    }
+
     fn execute(&self, context: &mut CommandContext<'_>) -> CommandResult {
-        let direction = context.args.trim().to_owned();
+        let direction = if context.invoked_as == self.name() {
+            context.args.trim()
+        } else {
+            context.invoked_as
+        };
 
         if direction.is_empty() {
             context.reply("Go where?\r\n");
