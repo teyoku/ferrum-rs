@@ -219,7 +219,7 @@ impl ServerActor {
         }
     }
 
-        fn send_room(&mut self, room: RoomId, except: Option<SessionId>, text: impl Into<String>) {
+    fn send_room(&mut self, room: RoomId, except: Option<SessionId>, text: impl Into<String>) {
         let recipients: Vec<_> = self
             .sessions
             .iter()
@@ -350,12 +350,23 @@ impl ServerActor {
     ) -> Result<(), &'static str> {
         let direction = Direction::parse(direction).ok_or("unknown direction")?;
 
-        let current = self.current_room(session_id)?;
+        let (current, player_name) = self
+            .sessions
+            .get(&session_id)
+            .and_then(ConnectedSession::player)
+            .map(|player| (player.room(), player.name().to_owned()))
+            .ok_or("choose a name first")?;
 
         let destination = self
             .world
             .destination(current, direction)
             .ok_or("there is no exit that way")?;
+
+        self.send_room(
+            current,
+            Some(session_id),
+            format!("{player_name} leaves {}.\r\n", direction.as_str()),
+        );
 
         let player = self
             .sessions
@@ -364,6 +375,15 @@ impl ServerActor {
             .ok_or("choose a name first")?;
 
         player.move_to(destination);
+
+        self.send_room(
+            destination,
+            Some(session_id),
+            format!(
+                "{player_name} arrives from {}.\r\n",
+                direction.opposite().as_str()
+            ),
+        );
 
         self.look(session_id)
     }
