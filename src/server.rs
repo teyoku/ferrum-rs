@@ -6,6 +6,7 @@ use crate::{
     command::{CommandContext, CommandRegistry},
     commands::register_builtins,
     player::{Player, PlayerNameError},
+    world::World,
 };
 
 pub const SERVER_MAILBOX_CAPACITY: usize = 256;
@@ -52,6 +53,7 @@ pub struct ServerActor {
     next_session_id: u64,
     receiver: mpsc::Receiver<ServerCommand>,
     commands: CommandRegistry,
+    world: World,
 }
 
 #[derive(Debug)]
@@ -87,10 +89,14 @@ impl ServerActor {
 
         register_builtins(&mut commands);
 
-        Self::spawn_with_registry(commands)
+        Self::spawn_with_world(commands, World::demo())
     }
 
     pub fn spawn_with_registry(commands: CommandRegistry) -> ServerHandle {
+        Self::spawn_with_world(commands, World::demo())
+    }
+
+    pub fn spawn_with_world(commands: CommandRegistry, world: World) -> ServerHandle {
         let (sender, receiver) = mpsc::channel(SERVER_MAILBOX_CAPACITY);
 
         let actor = Self {
@@ -98,6 +104,7 @@ impl ServerActor {
             next_session_id: 1,
             receiver,
             commands,
+            world,
         };
 
         tokio::spawn(actor.run());
@@ -174,18 +181,23 @@ impl ServerActor {
         }
     }
 
-    fn broadcast(&mut self, sender_id: SessionId, message: &str) {
-        let Some(sender_name) = self
+    fn say(&mut self, sender_id: SessionId, message: &str) -> Result<(), &'static str> {
+        let Some((sender_name, room)) = self
             .sessions
             .get(&sender_id)
-            .map(ConnectedSession::display_name)
+            .and_then(|session| session.player.as_ref())
+            .map(|player| (player.name().to_owned(), player.room()))
         else {
-            return;
+            return Err("choose a name before speaking");
         };
 
         let mut disconnected = Vec::new();
 
         for (&session_id, session) in &self.sessions {
+            if session.player.as_ref().map(Player::room) != Some(room) {
+                continue;
+            }
+
             let text = if session_id == sender_id {
                 format!("You say: {message}\r\n")
             } else {
@@ -200,6 +212,8 @@ impl ServerActor {
         for session_id in disconnected {
             self.sessions.remove(&session_id);
         }
+
+        Ok(())
     }
 
     pub(crate) fn send_text(&mut self, session_id: SessionId, text: String) {
@@ -210,16 +224,19 @@ impl ServerActor {
         self.send_to(session_id, SessionEvent::Close);
     }
 
-    pub(crate) fn broadcast_from(&mut self, session_id: SessionId, message: &str) {
-        self.broadcast(session_id, message);
-    }
-
     pub(crate) fn set_player_name(
         &mut self,
         session_id: SessionId,
         name: &str,
     ) -> Result<(), PlayerNameError> {
-        let player = Player::new(name)?;
+        let room = self
+            .sessions
+            .get(&session_id)
+            .and_then(|session| session.player.as_ref())
+            .map(Player::room)
+            .unwrap_or_else(|| self.world.start_room());
+
+        let player = Player::new(name, room)?;
         let normalized_name = player.name().to_lowercase();
 
         let already_in_use = self.sessions.iter().any(|(&other_id, session)| {
