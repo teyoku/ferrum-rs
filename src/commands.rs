@@ -121,10 +121,11 @@ impl Command for NameCommand {
         let requested_name = context.args.trim().to_owned();
 
         match context.set_name(&requested_name) {
-            Ok(()) => context.reply(format!(
-                "You are now known as \
-                 {requested_name}.\r\n"
-            )),
+            Ok(()) => {
+                context.reply(format!("You are now known as {requested_name}.\r\n"));
+
+                context.look()?;
+            }
 
             Err(err) => context.reply(format!("Cannot use that name: {err}.\r\n")),
         }
