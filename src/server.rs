@@ -60,7 +60,7 @@ pub struct ServerActor {
 pub struct ConnectedSession {
     address: SocketAddr,
     output: mpsc::Sender<SessionEvent>,
-    state: SessionState
+    state: SessionState,
 }
 
 #[derive(Debug)]
@@ -71,10 +71,27 @@ enum SessionState {
 
 impl ConnectedSession {
     pub fn display_name(&self) -> String {
-        self.player
-            .as_ref()
+        self.player()
             .map(|player| player.name().to_owned())
             .unwrap_or_else(|| self.address.to_string())
+    }
+
+    fn player(&self) -> Option<&Player> {
+        match &self.state {
+            SessionState::AwaitingName => None,
+            SessionState::Playing(player) => Some(player),
+        }
+    }
+
+    fn player_mut(&mut self) -> Option<&mut Player> {
+        match &mut self.state {
+            SessionState::AwaitingName => None,
+            SessionState::Playing(player) => Some(player),
+        }
+    }
+
+    fn is_playing(&self) -> bool {
+        matches!(self.state, SessionState::Playing(_))
     }
 }
 
