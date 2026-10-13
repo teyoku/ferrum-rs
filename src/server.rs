@@ -171,7 +171,7 @@ impl ServerActor {
             ConnectedSession {
                 address,
                 output,
-                player: None,
+                state: SessionState::AwaitingName,
             },
         );
 
@@ -185,6 +185,20 @@ impl ServerActor {
             self.send_text(session_id, "Unknown command.\r\n".to_owned());
             return;
         };
+
+        let is_playing = self
+            .sessions
+            .get(&session_id)
+            .is_some_and(ConnectedSession::is_playing);
+
+        if !is_playing && !invocation.command.allowed_before_login() {
+            self.send_text(
+                session_id,
+                "Choose a name first: name <player>.\r\n".to_owned(),
+            );
+
+            return;
+        }
 
         let mut context = CommandContext::new(session_id, invocation.args, self);
 
