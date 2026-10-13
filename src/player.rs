@@ -8,7 +8,7 @@ pub const MAX_NAME_LENGTH: usize = 16;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Player {
     name: String,
-    room: RoomId
+    room: RoomId,
 }
 
 impl Player {
@@ -30,7 +30,7 @@ impl Player {
 
         Ok(Self {
             name: name.to_owned(),
-            room
+            room,
         })
     }
 
