@@ -1,15 +1,18 @@
 use std::{error::Error, fmt};
 
+use crate::world::RoomId;
+
 pub const MIN_NAME_LENGTH: usize = 3;
 pub const MAX_NAME_LENGTH: usize = 16;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Player {
     name: String,
+    room: RoomId
 }
 
 impl Player {
-    pub fn new(name: &str) -> Result<Self, PlayerNameError> {
+    pub fn new(name: &str, room: RoomId) -> Result<Self, PlayerNameError> {
         let name = name.trim();
         let length = name.chars().count();
 
@@ -27,11 +30,20 @@ impl Player {
 
         Ok(Self {
             name: name.to_owned(),
+            room
         })
     }
 
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub fn room(&self) -> RoomId {
+        self.room
+    }
+
+    pub(crate) fn move_to(&mut self, room: RoomId) {
+        self.room = room;
     }
 }
 
@@ -66,15 +78,16 @@ mod tests {
 
     #[test]
     fn accepts_a_valid_name() {
-        let player = Player::new("Alice").unwrap();
+        let player = Player::new("Alice", RoomId::new(1)).unwrap();
 
         assert_eq!(player.name(), "Alice");
+        assert_eq!(player.room(), RoomId::new(1));
     }
 
     #[test]
     fn rejects_a_name_with_non_letters() {
         assert_eq!(
-            Player::new("Alice42"),
+            Player::new("Alice42", RoomId::new(1)),
             Err(PlayerNameError::InvalidCharacters)
         )
     }
