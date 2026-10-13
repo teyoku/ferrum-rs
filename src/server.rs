@@ -219,6 +219,22 @@ impl ServerActor {
         }
     }
 
+        fn send_room(&mut self, room: RoomId, except: Option<SessionId>, text: impl Into<String>) {
+        let recipients: Vec<_> = self
+            .sessions
+            .iter()
+            .filter(|(session_id, _)| Some(**session_id) != except)
+            .filter(|(_, session)| session.player().map(Player::room) == Some(room))
+            .map(|(session_id, _)| *session_id)
+            .collect();
+
+        let text = text.into();
+
+        for session_id in recipients {
+            self.send_to(session_id, SessionEvent::Text(text.clone()));
+        }
+    }
+
     pub(crate) fn say(&mut self, sender_id: SessionId, message: &str) -> Result<(), &'static str> {
         let Some((sender_name, room)) = self
             .sessions
@@ -229,27 +245,13 @@ impl ServerActor {
             return Err("choose a name before speaking");
         };
 
-        let mut disconnected = Vec::new();
+        self.send_text(sender_id, format!("You say: {message}\r\n"));
 
-        for (&session_id, session) in &self.sessions {
-            if session.player().map(Player::room) != Some(room) {
-                continue;
-            }
-
-            let text = if session_id == sender_id {
-                format!("You say: {message}\r\n")
-            } else {
-                format!("{sender_name} says: {message}\r\n")
-            };
-
-            if session.output.try_send(SessionEvent::Text(text)).is_err() {
-                disconnected.push(session_id);
-            }
-        }
-
-        for session_id in disconnected {
-            self.sessions.remove(&session_id);
-        }
+        self.send_room(
+            room,
+            Some(sender_id),
+            format!("{sender_name} says: {message}\r\n"),
+        );
 
         Ok(())
     }
@@ -302,7 +304,8 @@ impl ServerActor {
         let mut names: Vec<_> = self
             .sessions
             .values()
-            .map(ConnectedSession::display_name)
+            .filter_map(ConnectedSession::player)
+            .map(|player| player.name().to_owned())
             .collect();
 
         names.sort_unstable_by_key(|name| name.to_lowercase());
@@ -363,22 +366,6 @@ impl ServerActor {
         player.move_to(destination);
 
         self.look(session_id)
-    }
-
-    fn send_room(&mut self, room: RoomId, except: Option<SessionId>, text: impl Into<String>) {
-        let recipients: Vec<_> = self
-            .sessions
-            .iter()
-            .filter(|(session_id, _)| Some(**session_id) != except)
-            .filter(|(_, session)| session.player().map(Player::room) == Some(room))
-            .map(|(session_id, _)| *session_id)
-            .collect();
-
-        let text = text.into();
-
-        for session_id in recipients {
-            self.send_to(session_id, SessionEvent::Text(text.clone()));
-        }
     }
 }
 
