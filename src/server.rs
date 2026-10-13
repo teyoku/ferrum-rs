@@ -60,7 +60,13 @@ pub struct ServerActor {
 pub struct ConnectedSession {
     address: SocketAddr,
     output: mpsc::Sender<SessionEvent>,
-    player: Option<Player>,
+    state: SessionState
+}
+
+#[derive(Debug)]
+enum SessionState {
+    AwaitingName,
+    Playing(Player),
 }
 
 impl ConnectedSession {
