@@ -45,9 +45,15 @@ impl<'a> CommandContext<'a> {
     }
 
     pub fn say(&mut self, message: &str) -> CommandResult {
-        self.server.broadcast_from(self.session_id, message);
+        self.server.say(self.session_id, message)
+    }
 
-        Ok(())
+    pub fn look(&mut self) -> CommandResult {
+        self.server.look(self.session_id)
+    }
+
+    pub fn go(&mut self, direction: &str) -> CommandResult {
+        self.server.go(self.session_id, direction)
     }
 
     pub fn close(&mut self) {
