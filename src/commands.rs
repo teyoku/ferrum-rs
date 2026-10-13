@@ -125,7 +125,7 @@ impl Command for GoCommand {
             return Ok(());
         }
 
-        context.go(&direction)
+        context.go(direction)
     }
 }
 
