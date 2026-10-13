@@ -222,7 +222,7 @@ impl ServerActor {
         let Some((sender_name, room)) = self
             .sessions
             .get(&sender_id)
-            .and_then(|session| session.player.as_ref())
+            .and_then(ConnectedSession::player)
             .map(|player| (player.name().to_owned(), player.room()))
         else {
             return Err("choose a name before speaking");
@@ -231,7 +231,7 @@ impl ServerActor {
         let mut disconnected = Vec::new();
 
         for (&session_id, session) in &self.sessions {
-            if session.player.as_ref().map(Player::room) != Some(room) {
+            if session.player().map(Player::room) != Some(room) {
                 continue;
             }
 
