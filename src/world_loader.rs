@@ -1,4 +1,8 @@
+use std::io;
+
 use serde::Deserialize;
+
+use crate::world::WorldError;
 
 #[derive(Debug, Deserialize)]
 struct WorldDefinition {
@@ -24,4 +28,16 @@ struct ExitDefinition {
 
     #[serde(default)]
     bidirectional: bool,
+}
+
+#[derive(Debug)]
+pub enum WorldLoadError {
+    Io(io::Error),
+    Json(serde_json::Error),
+    EmptyWorld,
+    DuplicateRoomKey(String),
+    StartRoomNotFound(String),
+    RoomKeyNotFound(String),
+    InvalidDirection(String),
+    World(WorldError),
 }
