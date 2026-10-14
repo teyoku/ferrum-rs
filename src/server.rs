@@ -577,6 +577,7 @@ mod tests {
 
         let _ = blair_events.recv().await;
         let _ = blair_events.recv().await;
+        let _ = alex_events.recv().await;
 
         server.input(alex_id, "n".to_owned()).await.unwrap();
 
@@ -654,5 +655,65 @@ mod tests {
         assert!(text.contains("look"));
         assert!(text.contains("say <message>"));
         assert!(text.contains("who"));
+    }
+
+    #[tokio::test]
+    async fn announces_player_presence_changes() {
+        let server = ServerActor::spawn();
+
+        let (alex_output, mut alex_events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+
+        let alex_id = server
+            .connect("127.0.0.1:4000".parse().unwrap(), alex_output)
+            .await
+            .unwrap();
+
+        let (blair_output, mut blair_events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+
+        let blair_id = server
+            .connect("127.0.0.1:4001".parse().unwrap(), blair_output)
+            .await
+            .unwrap();
+
+        server.input(alex_id, "name Alex".to_owned()).await.unwrap();
+
+        let _ = alex_events.recv().await;
+        let _ = alex_events.recv().await;
+
+        server
+            .input(blair_id, "name Blair".to_owned())
+            .await
+            .unwrap();
+
+        assert!(matches!(
+            alex_events.recv().await,
+            Some(SessionEvent::Text(text))
+                if text == "Blair enters the game.\r\n"
+        ));
+
+        let _ = blair_events.recv().await;
+        let _ = blair_events.recv().await;
+
+        server
+            .input(blair_id, "name Casey".to_owned())
+            .await
+            .unwrap();
+
+        assert!(matches!(
+            alex_events.recv().await,
+            Some(SessionEvent::Text(text))
+                if text == "Blair is now known as Casey.\r\n"
+        ));
+
+        let _ = blair_events.recv().await;
+        let _ = blair_events.recv().await;
+
+        server.disconnect(blair_id).await.unwrap();
+
+        assert!(matches!(
+            alex_events.recv().await,
+            Some(SessionEvent::Text(text))
+                if text == "Casey has left the game.\r\n"
+        ));
     }
 }
