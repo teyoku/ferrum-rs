@@ -113,33 +113,25 @@ impl World {
     }
 
     pub fn demo() -> Self {
-        let square = RoomId(1);
-        let tavern = RoomId(2);
+        let mut world = Self::new(
+            "Town Square",
+            "A weathered fountain stands in the middle of the square.",
+        );
 
-        let rooms = HashMap::from([
-            (
-                square,
-                Room {
-                    name: "Town Square".to_owned(),
-                    description: "A weathered fountain stands in the middle of the square."
-                        .to_owned(),
-                    exits: HashMap::from([(Direction::North, tavern)]),
-                },
-            ),
-            (
-                tavern,
-                Room {
-                    name: "Rusty Tankard".to_owned(),
-                    description: "The tavern is warm and smells of wood smoke.".to_owned(),
-                    exits: HashMap::from([(Direction::South, square)]),
-                },
-            ),
-        ]);
+        let square = world.start_room();
 
-        Self {
-            rooms,
-            start_room: square,
-        }
+        let tavern = world
+            .add_room(
+                "Rusty Tankard",
+                "The tavern is warm and smells of wood smoke.",
+            )
+            .expect("demo world must fit into room identifiers");
+
+        world
+            .connect_two_way(square, Direction::North, tavern)
+            .expect("demo rooms must exist");
+
+        world
     }
 
     pub fn start_room(&self) -> RoomId {
