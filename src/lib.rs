@@ -4,6 +4,7 @@ pub mod player;
 pub mod server;
 pub mod session;
 pub mod world;
+pub mod world_loader;
 
 pub use command::{Command, CommandContext, CommandRegistry};
 
