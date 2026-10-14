@@ -6,7 +6,7 @@ pub mod session;
 pub mod world;
 pub mod world_loader;
 
-pub use command::{Command, CommandContext, CommandRegistry};
+pub use command::{Command, CommandContext, CommandHelp, CommandRegistry};
 
 pub use player::{Player, PlayerNameError};
 
