@@ -201,7 +201,7 @@ impl World {
             .get_mut(&first)
             .expect("room was checked above")
             .exits
-            .insert(direction, first);
+            .insert(direction, second);
 
         self.rooms
             .get_mut(&second)
