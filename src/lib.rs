@@ -13,4 +13,4 @@ pub use server::{ServerActor, ServerHandle};
 
 pub use session::process_client;
 
-pub use world::{Direction, RoomId, World};
+pub use world::{Direction, RoomId, World, WorldError};
