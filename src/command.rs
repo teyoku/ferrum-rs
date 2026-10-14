@@ -10,6 +10,14 @@ pub type CommandResult = Result<(), &'static str>;
 pub trait Command: Debug + Sync + Send {
     fn name(&self) -> &'static str;
 
+    fn usage(&self) -> &'static str {
+        self.name()
+    }
+
+    fn description(&self) -> &'static str {
+        "No description available."
+    }
+
     fn aliases(&self) -> &'static [&'static str] {
         &[]
     }
