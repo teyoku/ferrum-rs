@@ -391,6 +391,23 @@ impl ServerActor {
 
         self.look(session_id)
     }
+
+    pub(crate) fn help_text(&self, session_id: SessionId) -> String {
+        let before_login = !self
+            .sessions
+            .get(&session_id)
+            .is_some_and(ConnectedSession::is_playing);
+
+        let entries = self.commands.help_entries(before_login);
+
+        let mut text = String::from("Commands:\r\n");
+
+        for entry in entries {
+            text.push_str(&format!("  {:<18} {}\r\n", entry.usage, entry.description));
+        }
+
+        text
+    }
 }
 
 impl ServerHandle {
