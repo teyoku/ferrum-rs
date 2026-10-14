@@ -1,0 +1,34 @@
+{
+  "start": "square",
+  "rooms": [
+    {
+      "key": "square",
+      "name": "Village Square",
+      "description": "A stone well stands at the centre of the village."
+    },
+    {
+      "key": "tavern",
+      "name": "Old Tavern",
+      "description": "A fire crackles beneath a blackened chimney."
+    },
+    {
+      "key": "forest",
+      "name": "Forest Path",
+      "description": "A narrow path disappears between ancient trees."
+    }
+  ],
+  "exits": [
+    {
+      "from": "square",
+      "direction": "north",
+      "to": "tavern",
+      "bidirectional": true
+    },
+    {
+      "from": "square",
+      "direction": "east",
+      "to": "forest",
+      "bidirectional": true
+    }
+  ]
+}
