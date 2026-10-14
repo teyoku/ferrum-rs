@@ -1,6 +1,6 @@
 use std::{env, error::Error};
 
-use ferrum_rs::{Direction, ServerActor, World, WorldError, process_client};
+use ferrum_rs::{Direction, ServerActor, World, WorldError, load_world, process_client};
 use tokio::net::TcpListener;
 
 #[tokio::main]
@@ -15,7 +15,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let listener = TcpListener::bind(&address).await?;
 
-    let world = build_world()?;
+    let world_file = env::var("WORLD_FILE").unwrap_or_else(|_| "data/world.json".to_owned());
+
+    let world = load_world(world_file)?;
+
     let server = ServerActor::spawn_with_world(world);
 
     println!("Ferrum MUD is listening on {address}");
@@ -35,26 +38,4 @@ async fn main() -> Result<(), Box<dyn Error>> {
             println!("Client disconnected: {peer_address}");
         });
     }
-}
-
-fn build_world() -> Result<World, WorldError> {
-    let mut world = World::new(
-        "Village Square",
-        "A stone well stands at the centre of the village.",
-    );
-
-    let square = world.start_room();
-
-    let tavern = world.add_room("Old Tavern", "A fire crackles beneath a blackened chimney.")?;
-
-    let forest = world.add_room(
-        "Forest Path",
-        "A narrow path disappears between ancient trees.",
-    )?;
-
-    world.connect_two_way(square, Direction::North, tavern)?;
-
-    world.connect_two_way(square, Direction::East, forest)?;
-
-    Ok(world)
 }
