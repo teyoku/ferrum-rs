@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet}, error::Error, fmt, fs, io,
+    collections::{HashMap, HashSet}, error::Error, fmt, fs, io, path::Path,
 };
 
 use serde::Deserialize;
@@ -110,10 +110,16 @@ impl From<WorldError> for WorldLoadError {
     }
 }
 
-pub fn parse_world(json: &str) -> Result<World, WorldLoadError> {
-    let json = fs::read_to_string(json)?;
+pub fn load_world(path: impl AsRef<Path>) -> Result<World, WorldLoadError> {
+    let json = fs::read_to_string(path)?;
 
     parse_world(&json)
+}
+
+pub fn parse_world(json: &str) -> Result<World, WorldLoadError> {
+    let definition = serde_json::from_str(json)?;
+
+    build_world(definition)
 }
 
 fn build_world(definition: WorldDefinition) -> Result<World, WorldLoadError> {
