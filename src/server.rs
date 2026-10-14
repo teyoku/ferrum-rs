@@ -151,7 +151,7 @@ impl ServerActor {
                     self.handle_input(session_id, &line);
                 }
                 ServerCommand::Disconnect { session_id } => {
-                    self.sessions.remove(&session_id);
+                    self.disconnect(session_id);
                 }
             }
         }
@@ -209,6 +209,20 @@ impl ServerActor {
 
         if let Err(error) = invocation.command.execute(&mut context) {
             context.reply(format!("Command error: {error}\r\n"));
+        }
+    }
+
+    fn disconnect(&mut self, session_id: SessionId) {
+        let departing_player = self
+            .sessions
+            .remove(&session_id)
+            .and_then(|session| match session.state {
+                SessionState::AwaitingName => None,
+                SessionState::Playing(player) => Some((player.name().to_owned(), player.room())),
+            });
+
+        if let Some((player_name, room)) = departing_player {
+            self.send_room(room, None, format!("{player_name} has left the game.\r\n"));
         }
     }
 
