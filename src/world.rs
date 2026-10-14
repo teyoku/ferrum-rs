@@ -146,6 +146,14 @@ impl World {
         self.start_room
     }
 
+    pub fn set_start_room(&mut self, room: RoomId) -> Result<(), WorldError> {
+        self.require_room(room)?;
+
+        self.start_room = room;
+
+        Ok(())
+    }
+
     pub fn destination(&self, room: RoomId, direction: Direction) -> Option<RoomId> {
         self.rooms.get(&room)?.exits.get(&direction).copied()
     }
