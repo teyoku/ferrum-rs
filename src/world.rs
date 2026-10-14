@@ -92,9 +92,26 @@ struct Room {
 pub struct World {
     rooms: HashMap<RoomId, Room>,
     start_room: RoomId,
+    next_room_id: u64,
 }
 
 impl World {
+    pub fn new(name: impl Into<String>, description: impl Into<String>) -> Self {
+        let start_room = RoomId(1);
+
+        let room = Room {
+            name: name.into(),
+            description: description.into(),
+            exits: HashMap::new(),
+        };
+
+        Self {
+            rooms: HashMap::from([(start_room, room)]),
+            start_room,
+            next_room_id: 2,
+        }
+    }
+
     pub fn demo() -> Self {
         let square = RoomId(1);
         let tavern = RoomId(2);
