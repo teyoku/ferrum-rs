@@ -249,6 +249,8 @@ impl World {
 
 #[cfg(test)]
 mod tests {
+    use crate::world::WorldError::RoomNotFound;
+
     use super::*;
 
     #[test]
@@ -278,5 +280,18 @@ mod tests {
         assert_eq!(world.destination(dock, Direction::East), Some(warehouse));
 
         assert_eq!(world.destination(warehouse, Direction::West), Some(dock));
+    }
+
+    #[test]
+    fn refuses_to_connect_a_missing_room() {
+        let mut world = World::new("Dock", "Cold waves strike the old pier.");
+
+        let dock = world.start_room();
+        let missing = RoomId::new(999);
+
+        assert_eq!(
+            world.connect(dock, Direction::North, missing),
+            Err(RoomNotFound(missing))
+        );
     }
 }
