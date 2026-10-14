@@ -24,8 +24,8 @@ pub async fn process_client(stream: TcpStream, server: ServerHandle) -> Result<(
         writer
             .write_all(
                 b"Welcome to Ferrum MUD!\r\n\
-                      Commands: name <player>, who, look, \
-                      go <direction>, say <message>, quit.\r\n",
+                      Choose a name with: name <player>.\r\n\
+                      Type help to see available commands.\r\n",
             )
             .await?;
 
