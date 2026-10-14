@@ -1,5 +1,5 @@
 use core::fmt;
-use std::collections::HashMap;
+use std::{collections::HashMap, error::Error};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RoomId(u64);
@@ -61,6 +61,25 @@ impl Direction {
         }
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WorldError {
+    RoomNotFound(RoomId),
+    RoomIdOverflow,
+}
+
+impl fmt::Display for WorldError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::RoomNotFound(room_id) => {
+                write!(f, "room {room_id} does not exist")
+            }
+            Self::RoomIdOverflow => f.write_str("room identifier overflowed"),
+        }
+    }
+}
+
+impl Error for WorldError {}
 
 #[derive(Debug)]
 struct Room {
