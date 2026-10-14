@@ -22,6 +22,14 @@ impl Command for NameCommand {
         true
     }
 
+    fn usage(&self) -> &'static str {
+        "name <player>"
+    }
+
+    fn description(&self) -> &'static str {
+        "Choose or change your player name."
+    }
+
     fn execute(&self, context: &mut CommandContext<'_>) -> CommandResult {
         let requested_name = context.args.trim().to_owned();
 
@@ -47,6 +55,10 @@ impl Command for WhoCommand {
         "who"
     }
 
+    fn description(&self) -> &'static str {
+        "List connected players."
+    }
+
     fn execute(&self, context: &mut CommandContext<'_>) -> CommandResult {
         let names = context.online_names();
         let count = names.len();
@@ -68,6 +80,14 @@ impl Command for SayCommand {
 
     fn aliases(&self) -> &'static [&'static str] {
         &["'"]
+    }
+
+    fn usage(&self) -> &'static str {
+        "say <message>"
+    }
+
+    fn description(&self) -> &'static str {
+        "Speak to players in the same room."
     }
 
     fn execute(&self, context: &mut CommandContext<'_>) -> CommandResult {
@@ -95,6 +115,10 @@ impl Command for LookCommand {
         &["l"]
     }
 
+    fn description(&self) -> &'static str {
+        "Look at your current room."
+    }
+
     fn execute(&self, context: &mut CommandContext<'_>) -> CommandResult {
         context.look()
     }
@@ -112,6 +136,14 @@ impl Command for GoCommand {
         &[
             "north", "n", "south", "s", "east", "e", "west", "w", "up", "u", "down", "d",
         ]
+    }
+
+    fn usage(&self) -> &'static str {
+        "go <direction>"
+    }
+
+    fn description(&self) -> &'static str {
+        "Move through an exit."
     }
 
     fn execute(&self, context: &mut CommandContext<'_>) -> CommandResult {
@@ -173,6 +205,10 @@ impl Command for QuitCommand {
 
     fn allowed_before_login(&self) -> bool {
         true
+    }
+
+    fn description(&self) -> &'static str {
+        "Disconnect from the game."
     }
 
     fn execute(&self, context: &mut CommandContext<'_>) -> CommandResult {
