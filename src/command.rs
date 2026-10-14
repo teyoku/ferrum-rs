@@ -137,7 +137,7 @@ impl CommandRegistry {
         let mut entries: Vec<_> = self
             .commands
             .values()
-            .filter(|command| !before_login && command.allowed_before_login())
+            .filter(|command| !before_login || command.allowed_before_login())
             .map(|command| CommandHelp {
                 name: command.name(),
                 usage: command.usage(),
