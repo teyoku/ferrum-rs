@@ -196,6 +196,30 @@ impl World {
         Ok(())
     }
 
+    pub fn connect_two_way(
+        &mut self,
+        first: RoomId,
+        direction: Direction,
+        second: RoomId,
+    ) -> Result<(), WorldError> {
+        self.require_room(first)?;
+        self.require_room(second)?;
+
+        self.rooms
+            .get_mut(&first)
+            .expect("room was checked above")
+            .exits
+            .insert(direction, first);
+
+        self.rooms
+            .get_mut(&second)
+            .expect("room was checked above")
+            .exits
+            .insert(direction.opposite(), first);
+
+        Ok(())
+    }
+
     pub fn destination(&self, room: RoomId, direction: Direction) -> Option<RoomId> {
         self.rooms.get(&room)?.exits.get(&direction).copied()
     }
