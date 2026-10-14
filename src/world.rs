@@ -178,6 +178,24 @@ impl World {
         Ok(room_id)
     }
 
+    pub fn connect(
+        &mut self,
+        from: RoomId,
+        direction: Direction,
+        to: RoomId,
+    ) -> Result<(), WorldError> {
+        self.require_room(to)?;
+
+        let room = self
+            .rooms
+            .get_mut(&from)
+            .ok_or(WorldError::RoomNotFound(from))?;
+
+        room.exits.insert(direction, to);
+
+        Ok(())
+    }
+
     pub fn destination(&self, room: RoomId, direction: Direction) -> Option<RoomId> {
         self.rooms.get(&room)?.exits.get(&direction).copied()
     }
