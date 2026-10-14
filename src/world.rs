@@ -260,4 +260,23 @@ mod tests {
 
         assert_eq!(world.destination(tavern, Direction::South), Some(square));
     }
+
+    #[test]
+    fn builds_a_custom_world() {
+        let mut world = World::new("Dock", "Cold waves strike the old pier.");
+
+        let dock = world.start_room();
+
+        let warehouse = world
+            .add_room("Warehouse", "Dusty crates fill the room.")
+            .unwrap();
+
+        world
+            .connect_two_way(dock, Direction::East, warehouse)
+            .unwrap();
+
+        assert_eq!(world.destination(dock, Direction::East), Some(warehouse));
+
+        assert_eq!(world.destination(warehouse, Direction::West), Some(dock));
+    }
 }
