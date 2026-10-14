@@ -112,7 +112,7 @@ impl World {
         }
     }
 
-    pub fn demo() -> Self {
+    pub(crate) fn demo() -> Self {
         let mut world = Self::new(
             "Town Square",
             "A weathered fountain stands in the middle of the square.",
