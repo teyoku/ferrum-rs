@@ -1,8 +1,15 @@
-use std::{error::Error, fmt, io};
+use std::{
+    collections::{HashMap, HashSet},
+    error::Error,
+    fmt, io,
+};
 
 use serde::Deserialize;
 
-use crate::world::WorldError;
+use crate::{
+    RoomId,
+    world::{Direction, World, WorldError},
+};
 
 #[derive(Debug, Deserialize)]
 struct WorldDefinition {
@@ -103,4 +110,66 @@ impl From<WorldError> for WorldLoadError {
     fn from(error: WorldError) -> Self {
         Self::World(error)
     }
+}
+
+fn build_world(definition: WorldDefinition) -> Result<World, WorldLoadError> {
+    if definition.rooms.is_empty() {
+        return Err(WorldLoadError::EmptyWorld);
+    }
+
+    validate_room_keys(&definition.rooms)?;
+
+    let start = definition
+        .rooms
+        .iter()
+        .find(|room| room.key == definition.start)
+        .ok_or_else(|| WorldLoadError::StartRoomNotFound(definition.start.clone()))?;
+
+    let mut world = World::new(&start.name, &start.description);
+
+    let mut room_ids = HashMap::from([(start.key.as_str(), world.start_room())]);
+
+    for room in &definition.rooms {
+        if room.key == start.key {
+            continue;
+        }
+
+        let room_id = world.add_room(&room.name, &room.description)?;
+
+        room_ids.insert(room.key.as_str(), room_id);
+    }
+
+    for exit in &definition.exits {
+        let from = find_room(&room_ids, &exit.from)?;
+        let to = find_room(&room_ids, &exit.to)?;
+        let direction = Direction::parse(&exit.direction)
+            .ok_or_else(|| WorldLoadError::InvalidDirection(exit.direction.clone()))?;
+
+        if exit.bidirectional {
+            world.connect_two_way(from, direction, to)?;
+        } else {
+            world.connect(from, direction, to)?;
+        }
+    }
+
+    Ok(world)
+}
+
+fn validate_room_keys(rooms: &[RoomDefinition]) -> Result<(), WorldLoadError> {
+    let mut keys = HashSet::new();
+
+    for room in rooms {
+        if !keys.insert(room.key.as_str()) {
+            return Err(WorldLoadError::DuplicateRoomKey(room.key.clone()));
+        }
+    }
+
+    Ok(())
+}
+
+fn find_room(rooms: &HashMap<&str, RoomId>, key: &str) -> Result<RoomId, WorldLoadError> {
+    rooms
+        .get(key)
+        .copied()
+        .ok_or_else(|| WorldLoadError::RoomKeyNotFound(key.to_owned()))
 }
