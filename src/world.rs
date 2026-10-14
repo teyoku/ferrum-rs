@@ -52,7 +52,7 @@ impl Direction {
             Self::Up => Self::Down,
             Self::Down => Self::Up,
         }
-    } 
+    }
 }
 
 #[derive(Debug)]
