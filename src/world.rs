@@ -154,6 +154,30 @@ impl World {
         Ok(())
     }
 
+    pub fn add_room(
+        &mut self,
+        name: impl Into<String>,
+        description: impl Into<String>,
+    ) -> Result<RoomId, WorldError> {
+        let room_id = RoomId(self.next_room_id);
+
+        self.next_room_id = self
+            .next_room_id
+            .checked_add(1)
+            .ok_or(WorldError::RoomIdOverflow)?;
+
+        self.rooms.insert(
+            room_id,
+            Room {
+                name: name.into(),
+                description: description.into(),
+                exits: HashMap::new(),
+            },
+        );
+
+        Ok(room_id)
+    }
+
     pub fn destination(&self, room: RoomId, direction: Direction) -> Option<RoomId> {
         self.rooms.get(&room)?.exits.get(&direction).copied()
     }
