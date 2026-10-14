@@ -1,6 +1,6 @@
 use std::{env, error::Error};
 
-use ferrum_rs::{Direction, ServerActor, World, WorldError, load_world, process_client};
+use ferrum_rs::{ServerActor, load_world, process_client};
 use tokio::net::TcpListener;
 
 #[tokio::main]
