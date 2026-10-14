@@ -78,6 +78,10 @@ impl<'a> CommandContext<'a> {
     pub fn close(&mut self) {
         self.server.close_session(self.session_id);
     }
+
+    pub fn help_test(&self) -> String {
+        self.server.help_text(self.session_id)
+    }
 }
 
 #[derive(Debug, Default)]
