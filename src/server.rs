@@ -287,14 +287,19 @@ impl ServerActor {
         session_id: SessionId,
         name: &str,
     ) -> Result<(), PlayerNameError> {
-        let room = self
+        let previous_payer = self
             .sessions
             .get(&session_id)
             .and_then(ConnectedSession::player)
-            .map(Player::room)
+            .map(|player| (player.name().to_owned(), player.room()));
+
+        let room = previous_payer
+            .as_ref()
+            .map(|(_, room)| *room)
             .unwrap_or_else(|| self.world.start_room());
 
         let player = Player::new(name, room)?;
+        let player_name = player.name().to_owned();
         let normalized_name = player.name().to_lowercase();
 
         let already_in_use = self.sessions.iter().any(|(&other_id, session)| {
@@ -314,6 +319,18 @@ impl ServerActor {
             .ok_or(PlayerNameError::SessionNotFound)?;
 
         session.state = SessionState::Playing(player);
+
+        let announcement = match previous_payer {
+            Some((previous_name, _)) if previous_name != player_name => Some(format!(
+                "{previous_name} is now known as {player_name}.\r\n"
+            )),
+            Some(_) => None,
+            None => Some(format!("{player_name} enters the game.\r\n")),
+        };
+
+        if let Some(announcement) = announcement {
+            self.send_room(room, Some(session_id), announcement);
+        }
 
         Ok(())
     }
