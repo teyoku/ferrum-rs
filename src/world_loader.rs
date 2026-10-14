@@ -86,3 +86,21 @@ impl Error for WorldLoadError {
         }
     }
 }
+
+impl From<io::Error> for WorldLoadError {
+    fn from(error: io::Error) -> Self {
+        Self::Io(error)
+    }
+}
+
+impl From<serde_json::Error> for WorldLoadError {
+    fn from(error: serde_json::Error) -> Self {
+        Self::Json(error)
+    }
+}
+
+impl From<WorldError> for WorldLoadError {
+    fn from(error: WorldError) -> Self {
+        Self::World(error)
+    }
+}
