@@ -6,6 +6,7 @@ pub fn register_builtins(registry: &mut CommandRegistry) {
     registry.register(SayCommand);
     registry.register(LookCommand);
     registry.register(GoCommand);
+    registry.register(HelpCommand);
     registry.register(QuitCommand);
 }
 
@@ -126,6 +127,35 @@ impl Command for GoCommand {
         }
 
         context.go(direction)
+    }
+}
+
+#[derive(Debug)]
+pub struct HelpCommand;
+
+impl Command for HelpCommand {
+    fn name(&self) -> &'static str {
+        "help"
+    }
+
+    fn aliases(&self) -> &'static [&'static str] {
+        &["?"]
+    }
+
+    fn allowed_before_login(&self) -> bool {
+        true
+    }
+
+    fn description(&self) -> &'static str {
+        "Show available commands."
+    }
+
+    fn execute(&self, context: &mut CommandContext<'_>) -> CommandResult {
+        let text = context.help_text();
+
+        context.reply(text);
+
+        Ok(())
     }
 }
 
