@@ -89,6 +89,13 @@ pub struct CommandRegistry {
     commands: HashMap<String, Arc<dyn Command>>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CommandHelp {
+    pub name: &'static str,
+    pub usage: &'static str,
+    pub description: &'static str,
+}
+
 impl CommandRegistry {
     pub fn new() -> Self {
         Self::default()
@@ -124,6 +131,24 @@ impl CommandRegistry {
             invoked_as,
             args,
         })
+    }
+
+    pub fn help_entries(&self, before_login: bool) -> Vec<CommandHelp> {
+        let mut entries: Vec<_> = self
+            .commands
+            .values()
+            .filter(|command| !before_login && command.allowed_before_login())
+            .map(|command| CommandHelp {
+                name: command.name(),
+                usage: command.usage(),
+                description: command.description(),
+            })
+            .collect();
+
+        entries.sort_unstable_by_key(|entry| entry.name);
+        entries.dedup_by_key(|entry| entry.name);
+
+        entries
     }
 }
 
