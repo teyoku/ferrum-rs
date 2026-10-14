@@ -172,6 +172,13 @@ impl World {
             room.name, room.description, exits
         ))
     }
+
+    fn require_room(&self, room: RoomId) -> Result<(), WorldError> {
+        self.rooms
+            .contains_key(&room)
+            .then_some(())
+            .ok_or(WorldError::RoomNotFound(room))
+    }
 }
 
 #[cfg(test)]
