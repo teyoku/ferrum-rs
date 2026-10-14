@@ -570,4 +570,58 @@ mod tests {
                 if text.contains("Rusty Tankard")
         ));
     }
+
+    #[tokio::test]
+    async fn help_only_lists_commands_available_before_login() {
+        let server = ServerActor::spawn();
+
+        let (output, mut events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+
+        let address = "127.0.0.1:4000".parse().unwrap();
+
+        let session_id = server.connect(address, output).await.unwrap();
+
+        server.input(session_id, "help".to_owned()).await.unwrap();
+
+        let Some(SessionEvent::Text(text)) = events.recv().await else {
+            panic!("expected help text");
+        };
+
+        assert!(text.contains("help"));
+        assert!(text.contains("name <player>"));
+        assert!(text.contains("quit"));
+
+        assert!(!text.contains("look"));
+        assert!(!text.contains("say <message>"));
+    }
+
+    #[tokio::test]
+    async fn help_lists_game_commands_after_login() {
+        let server = ServerActor::spawn();
+
+        let (output, mut events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+
+        let address = "127.0.0.1:4000".parse().unwrap();
+
+        let session_id = server.connect(address, output).await.unwrap();
+
+        server
+            .input(session_id, "name Alex".to_owned())
+            .await
+            .unwrap();
+
+        let _ = events.recv().await;
+        let _ = events.recv().await;
+
+        server.input(session_id, "help".to_owned()).await.unwrap();
+
+        let Some(SessionEvent::Text(text)) = events.recv().await else {
+            panic!("expected help text");
+        };
+
+        assert!(text.contains("go <direction>"));
+        assert!(text.contains("look"));
+        assert!(text.contains("say <message>"));
+        assert!(text.contains("who"));
+    }
 }
