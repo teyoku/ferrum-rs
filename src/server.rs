@@ -108,18 +108,22 @@ impl Error for ServerStopped {}
 
 impl ServerActor {
     pub fn spawn() -> ServerHandle {
+        Self::spawn_with_world(World::demo())
+    }
+
+    pub fn spawn_with_world(world: World) -> ServerHandle {
         let mut commands = CommandRegistry::new();
 
         register_builtins(&mut commands);
 
-        Self::spawn_with_world(commands, World::demo())
+        Self::spawn_with_registry_and_world(commands, world)
     }
 
     pub fn spawn_with_registry(commands: CommandRegistry) -> ServerHandle {
-        Self::spawn_with_world(commands, World::demo())
+        Self::spawn_with_registry_and_world(commands, World::demo())
     }
 
-    pub fn spawn_with_world(commands: CommandRegistry, world: World) -> ServerHandle {
+    pub fn spawn_with_registry_and_world(commands: CommandRegistry, world: World) -> ServerHandle {
         let (sender, receiver) = mpsc::channel(SERVER_MAILBOX_CAPACITY);
 
         let actor = Self {
