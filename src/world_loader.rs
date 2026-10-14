@@ -1,5 +1,8 @@
 use std::{
-    collections::{HashMap, HashSet}, error::Error, fmt, fs, io, path::Path,
+    collections::{HashMap, HashSet},
+    error::Error,
+    fmt, fs, io,
+    path::Path,
 };
 
 use serde::Deserialize;
@@ -182,4 +185,109 @@ fn find_room(rooms: &HashMap<&str, RoomId>, key: &str) -> Result<RoomId, WorldLo
         .get(key)
         .copied()
         .ok_or_else(|| WorldLoadError::RoomKeyNotFound(key.to_owned()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn loads_rooms_and_bidirectional_exits() {
+        let world = parse_world(
+            r#"
+            {
+                "start": "square",
+                "rooms": [
+                    {
+                        "key": "square",
+                        "name": "Village Square",
+                        "description": "A stone well stands here."
+                    },
+                    {
+                        "key": "tavern",
+                        "name": "Old Tavern",
+                        "description": "A fire crackles in the hearth."
+                    }
+                ],
+                "exits": [
+                    {
+                        "from": "square",
+                        "direction": "north",
+                        "to": "tavern",
+                        "bidirectional": true
+                    }
+                ]
+            }
+            "#,
+        )
+        .unwrap();
+
+        let square = world.start_room();
+
+        let tavern = world.destination(square, Direction::North).unwrap();
+
+        assert_eq!(world.destination(tavern, Direction::South), Some(square));
+    }
+
+    #[test]
+    fn rejects_duplicate_room_keys() {
+        let error = parse_world(
+            r#"
+            {
+                "start": "square",
+                "rooms": [
+                    {
+                        "key": "square",
+                        "name": "One",
+                        "description": ""
+                    },
+                    {
+                        "key": "square",
+                        "name": "Two",
+                        "description": ""
+                    }
+                ]
+            }
+            "#,
+        )
+        .unwrap_err();
+
+        assert!(matches!(
+            error,
+            WorldLoadError::DuplicateRoomKey(key)
+                if key == "square"
+        ));
+    }
+
+    #[test]
+    fn rejects_unknown_exit_room() {
+        let error = parse_world(
+            r#"
+            {
+                "start": "square",
+                "rooms": [
+                    {
+                        "key": "square",
+                        "name": "Square",
+                        "description": ""
+                    }
+                ],
+                "exits": [
+                    {
+                        "from": "square",
+                        "direction": "north",
+                        "to": "missing"
+                    }
+                ]
+            }
+            "#,
+        )
+        .unwrap_err();
+
+        assert!(matches!(
+            error,
+            WorldLoadError::RoomKeyNotFound(key)
+                if key == "missing"
+        ));
+    }
 }
