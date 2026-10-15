@@ -218,11 +218,34 @@ impl ServerActor {
             .remove(&session_id)
             .and_then(|session| match session.state {
                 SessionState::AwaitingName => None,
-                SessionState::Playing(player) => Some((player.name().to_owned(), player.room())),
+                SessionState::Playing(player) => {
+                    let player_name = player.name().to_owned();
+                    let room = player.room();
+                    let inventory = player.into_inventory();
+
+                    Some((player_name, room, inventory))
+                }
             });
 
-        if let Some((player_name, room)) = departing_player {
-            self.send_room(room, None, format!("{player_name} has left the game.\r\n"));
+        if let Some((player_name, room, inventory)) = departing_player {
+            let dropped_items = !inventory.is_empty();
+
+            for item in inventory {
+                self.world
+                    .add_item(room, item)
+                    .expect("player room must exist");
+            }
+
+            let announcement = if dropped_items {
+                format!(
+                    "{player_name} has left the game, \
+                 dropping everything they carried.\r\n"
+                )
+            } else {
+                format!("{player_name} has left the game.\r\n")
+            };
+
+            self.send_room(room, None, announcement);
         }
     }
 
