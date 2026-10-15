@@ -115,6 +115,7 @@ pub struct CommandHelp {
     pub name: &'static str,
     pub usage: &'static str,
     pub description: &'static str,
+    pub aliases: &'static [&'static str],
 }
 
 impl CommandRegistry {
@@ -163,6 +164,7 @@ impl CommandRegistry {
                 name: command.name(),
                 usage: command.usage(),
                 description: command.description(),
+                aliases: command.aliases(),
             })
             .collect();
 
