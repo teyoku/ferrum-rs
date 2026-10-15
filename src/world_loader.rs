@@ -8,7 +8,7 @@ use std::{
 use serde::Deserialize;
 
 use crate::{
-    RoomId,
+    Item, RoomId,
     world::{Direction, World, WorldError},
 };
 
@@ -25,6 +25,17 @@ struct WorldDefinition {
 struct RoomDefinition {
     key: String,
     name: String,
+    description: String,
+
+    #[serde(default)]
+    items: Vec<ItemDefinition>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ItemDefinition {
+    name: String,
+
+    #[serde(default)]
     description: String,
 }
 
@@ -150,6 +161,14 @@ fn build_world(definition: WorldDefinition) -> Result<World, WorldLoadError> {
         let room_id = world.add_room(&room.name, &room.description)?;
 
         room_ids.insert(room.key.as_str(), room_id);
+    }
+
+    for room in &definition.rooms {
+        let room_id = find_room(&room_ids, &room.key)?;
+
+        for item in &room.items {
+            world.add_item(room_id, Item::new(&item.name, &item.description))?;
+        }
     }
 
     for exit in &definition.exits {
