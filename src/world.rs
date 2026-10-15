@@ -1,3 +1,4 @@
+use crate::item::Item;
 use core::fmt;
 use std::{collections::HashMap, error::Error};
 
@@ -86,6 +87,7 @@ struct Room {
     name: String,
     description: String,
     exits: HashMap<Direction, RoomId>,
+    items: Vec<Item>,
 }
 
 #[derive(Debug)]
@@ -103,6 +105,7 @@ impl World {
             name: name.into(),
             description: description.into(),
             exits: HashMap::new(),
+            items: Vec::new(),
         };
 
         Self {
@@ -164,6 +167,7 @@ impl World {
                 name: name.into(),
                 description: description.into(),
                 exits: HashMap::new(),
+                items: Vec::new(),
             },
         );
 
@@ -233,9 +237,19 @@ impl World {
             exits.join(", ")
         };
 
+        let items = if room.items.is_empty() {
+            "none".to_owned()
+        } else {
+            room.items
+                .iter()
+                .map(Item::name)
+                .collect::<Vec<_>>()
+                .join(", ")
+        };
+
         Some(format!(
-            "{}\r\n{}\r\nExits: {}\r\n",
-            room.name, room.description, exits
+            "{}\r\n{}\r\nExits: {}\r\nItems here: {}\r\n",
+            room.name, room.description, exits, items
         ))
     }
 
@@ -244,6 +258,29 @@ impl World {
             .contains_key(&room)
             .then_some(())
             .ok_or(WorldError::RoomNotFound(room))
+    }
+
+    pub fn add_item(&mut self, room: RoomId, item: Item) -> Result<(), WorldError> {
+        let room = self
+            .rooms
+            .get_mut(&room)
+            .ok_or(WorldError::RoomNotFound(room))?;
+
+        room.items.push(item);
+
+        Ok(())
+    }
+
+    pub fn take_item(&mut self, room: RoomId, name: &str) -> Option<Item> {
+        let room = self.rooms.get_mut(&room)?;
+        let normalized_name = name.trim().to_lowercase();
+
+        let index = room
+            .items
+            .iter()
+            .position(|item| item.name().to_lowercase() == normalized_name)?;
+
+        Some(room.items.remove(index))
     }
 }
 
