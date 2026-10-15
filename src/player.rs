@@ -35,6 +35,10 @@ impl Player {
         &self.inventory
     }
 
+    pub fn into_inventory(self) -> Vec<Item> {
+        self.inventory
+    }
+
     pub(crate) fn rename(&mut self, name: &str) -> Result<(), PlayerNameError> {
         self.name = Self::validate_name(name)?.to_owned();
 
