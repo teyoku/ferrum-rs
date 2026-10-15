@@ -79,8 +79,8 @@ impl<'a> CommandContext<'a> {
         self.server.close_session(self.session_id);
     }
 
-    pub fn help_text(&self) -> String {
-        self.server.help_text(self.session_id)
+    pub fn help_text(&self, command_name: &str) -> String {
+        self.server.help_text(self.session_id, command_name)
     }
 
     pub fn get_item(&mut self, name: &str) -> CommandResult {
