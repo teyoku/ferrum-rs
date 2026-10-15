@@ -4,7 +4,13 @@
     {
       "key": "square",
       "name": "Village Square",
-      "description": "A stone well stands at the centre of the village."
+      "description": "A stone well stands at the centre of the village.",
+      "items": [
+        {
+          "name": "coin",
+          "description": "A worn copper coin."
+        }
+      ]
     },
     {
       "key": "tavern",
