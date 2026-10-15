@@ -187,7 +187,30 @@ impl World {
         name: impl Into<String>,
         description: impl Into<String>,
     ) -> Result<RoomId, WorldError> {
-        let room_id = RoomId(self.next_room_id);
+        let key = format!("room-{}", self.next_room_id);
+
+        self.add_room_with_key(key, name, description)
+    }
+
+    pub fn add_room_with_key(
+        &mut self,
+        key: impl Into<String>,
+        name: impl Into<String>,
+        description: impl Into<String>,
+    ) -> Result<RoomId, WorldError> {
+        let key = key.into();
+        let key = key.trim();
+
+        if key.is_empty() {
+            return Err(WorldError::EmptyRoomKey);
+        }
+
+        if self.room_ids.contains_key(key) {
+            return Err(WorldError::DuplicateRoomKey(key.to_owned()));
+        }
+
+        let key = key.to_owned();
+        let room_id = RoomId::new(self.next_room_id);
 
         self.next_room_id = self
             .next_room_id
@@ -203,6 +226,9 @@ impl World {
                 items: Vec::new(),
             },
         );
+
+        self.room_ids.insert(key.clone(), room_id);
+        self.room_keys.insert(room_id, key);
 
         Ok(room_id)
     }
