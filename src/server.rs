@@ -534,6 +534,37 @@ impl ServerActor {
 
         Ok(())
     }
+
+    pub(crate) fn examine_item(
+        &mut self,
+        session_id: SessionId,
+        requested_name: &str,
+    ) -> Result<(), &'static str> {
+        let (room, carried_description) = self
+            .sessions
+            .get(&session_id)
+            .and_then(ConnectedSession::player)
+            .map(|player| {
+                let description = player
+                    .find_item(requested_name)
+                    .map(|item| item.description().to_owned());
+
+                (player.room(), description)
+            })
+            .ok_or("choose a name first")?;
+
+        let description = carried_description
+            .or_else(|| {
+                self.world
+                    .find_item(room, requested_name)
+                    .map(|item| item.description().to_owned())
+            })
+            .ok_or("you do not see that item")?;
+
+        self.send_text(session_id, format!("{description}\r\n"));
+
+        Ok(())
+    }
 }
 
 impl ServerHandle {
