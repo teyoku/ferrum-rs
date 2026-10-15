@@ -172,11 +172,15 @@ pub struct HelpCommand;
 
 impl Command for HelpCommand {
     fn name(&self) -> &'static str {
-        "help [command]"
+        "help"
     }
 
     fn aliases(&self) -> &'static [&'static str] {
         &["?"]
+    }
+
+    fn usage(&self) -> &'static str {
+        "help [command]"
     }
 
     fn allowed_before_login(&self) -> bool {
