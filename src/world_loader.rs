@@ -149,7 +149,7 @@ fn build_world(definition: WorldDefinition) -> Result<World, WorldLoadError> {
         .find(|room| room.key == definition.start)
         .ok_or_else(|| WorldLoadError::StartRoomNotFound(definition.start.clone()))?;
 
-    let mut world = World::new(&start.name, &start.description);
+    let mut world = World::new_with_key(&start.key, &start.name, &start.description)?;
 
     let mut room_ids = HashMap::from([(start.key.as_str(), world.start_room())]);
 
@@ -158,7 +158,7 @@ fn build_world(definition: WorldDefinition) -> Result<World, WorldLoadError> {
             continue;
         }
 
-        let room_id = world.add_room(&room.name, &room.description)?;
+        let room_id = world.add_room_with_key(&room.key, &room.name, &room.description)?;
 
         room_ids.insert(room.key.as_str(), room_id);
     }
