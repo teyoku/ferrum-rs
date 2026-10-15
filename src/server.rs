@@ -1,4 +1,4 @@
-use std::{collections::HashMap, error::Error, f32::consts::E, fmt, net::SocketAddr};
+use std::{collections::HashMap, error::Error, fmt, net::SocketAddr};
 
 use tokio::sync::{mpsc, oneshot};
 
