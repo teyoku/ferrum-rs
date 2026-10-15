@@ -1,6 +1,6 @@
 use std::{error::Error, fmt};
 
-use crate::world::RoomId;
+use crate::{item::Item, world::RoomId};
 
 pub const MIN_NAME_LENGTH: usize = 3;
 pub const MAX_NAME_LENGTH: usize = 16;
@@ -9,6 +9,7 @@ pub const MAX_NAME_LENGTH: usize = 16;
 pub struct Player {
     name: String,
     room: RoomId,
+    inventory: Vec<Item>,
 }
 
 impl Player {
@@ -31,6 +32,7 @@ impl Player {
         Ok(Self {
             name: name.to_owned(),
             room,
+            inventory: Vec::new(),
         })
     }
 
@@ -42,8 +44,27 @@ impl Player {
         self.room
     }
 
+    pub fn inventory(&self) -> &[Item] {
+        &self.inventory
+    }
+
     pub(crate) fn move_to(&mut self, room: RoomId) {
         self.room = room;
+    }
+
+    pub(crate) fn give_item(&mut self, item: Item) {
+        self.inventory.push(item);
+    }
+
+    pub(crate) fn take_item(&mut self, name: &str) -> Option<Item> {
+        let normalized_name = name.trim().to_lowercase();
+
+        let index = self
+            .inventory
+            .iter()
+            .position(|item| item.name().to_lowercase() == normalized_name)?;
+
+        Some(self.inventory.remove(index))
     }
 }
 
