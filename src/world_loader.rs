@@ -243,7 +243,11 @@ mod tests {
 
         let square = world.start_room();
 
+        assert_eq!(world.room_id("square"), Some(square));
+
         let tavern = world.destination(square, Direction::North).unwrap();
+
+        assert_eq!(world.room_key(tavern), Some("tavern"));
 
         assert_eq!(world.destination(tavern, Direction::South), Some(square));
     }
