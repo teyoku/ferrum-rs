@@ -811,4 +811,69 @@ mod tests {
                 if text == "Casey has left the game.\r\n"
         ));
     }
+
+    #[tokio::test]
+    async fn player_can_pick_up_and_drop_an_item() {
+        let mut world = World::new("Workshop", "Tools cover a wooden bench.");
+
+        world.add_item(
+            world.start_room(),
+            crate::Item::new("hammer", "A sturdy iron hammer."),
+        );
+
+        let server = ServerActor::spawn_with_world(world);
+
+        let (output, mut events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+
+        let session_id = server
+            .connect("127.0.0.1:4000".parse().unwrap(), output)
+            .await
+            .unwrap();
+
+        server
+            .input(session_id, "name Alex".to_owned())
+            .await
+            .unwrap();
+
+        let _ = events.recv().await;
+
+        assert!(matches!(
+            events.recv().await,
+            Some(SessionEvent::Text(text))
+                if text.contains("Items here: hammer")
+        ));
+
+        server
+            .input(session_id, "get hammer".to_owned())
+            .await
+            .unwrap();
+
+        assert!(matches!(
+            events.recv().await,
+            Some(SessionEvent::Text(text))
+                if text == "You pick up hammer.\r\n"
+        ));
+
+        server
+            .input(session_id, "inventory".to_owned())
+            .await
+            .unwrap();
+
+        assert!(matches!(
+            events.recv().await,
+            Some(SessionEvent::Text(text))
+                if text == "You are carrying: hammer.\r\n"
+        ));
+
+        server
+            .input(session_id, "drop hammer".to_owned())
+            .await
+            .unwrap();
+
+        assert!(matches!(
+            events.recv().await,
+            Some(SessionEvent::Text(text))
+                if text == "You drop hammer.\r\n"
+        ));
+    }
 }
