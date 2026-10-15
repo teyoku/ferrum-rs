@@ -173,6 +173,23 @@ impl CommandRegistry {
 
         entries
     }
+
+
+    pub fn help_entry(&self, name: &str, before_login: bool) -> Option<CommandHelp> {
+        let normalized_name = name.trim().to_lowercase();
+        let command = self.commands.get(&normalized_name)?;
+
+        if before_login && !command.allowed_before_login() {
+            return None;
+        }
+
+        Some(CommandHelp {
+            name: command.name(),
+            usage: command.usage(),
+            description: command.description(),
+            aliases: command.aliases(),
+        })
+    }
 }
 
 pub struct CommandInvocation<'a> {
