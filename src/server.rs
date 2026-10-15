@@ -565,6 +565,75 @@ impl ServerActor {
 
         Ok(())
     }
+
+    pub(crate) fn give_item(
+        &mut self,
+        giver_id: SessionId,
+        requested_item: &str,
+        requested_recipient: &str,
+    ) -> Result<(), &'static str> {
+        let (giver_name, room) = self
+            .sessions
+            .get(&giver_id)
+            .and_then(ConnectedSession::player)
+            .map(|player| (player.name().to_owned(), player.room()))
+            .ok_or("choose a name first")?;
+
+        let normalized_recipient = requested_recipient.trim().to_lowercase();
+
+        if giver_name.to_lowercase() == normalized_recipient {
+            return Err("you cannot give an item to yourself");
+        }
+
+        let recipient_id = self
+            .sessions
+            .iter()
+            .find_map(|(&session_id, session)| {
+                let player = session.player()?;
+
+                (session_id != giver_id
+                    && player.room() == room
+                    && player.name().to_lowercase() == normalized_recipient)
+                    .then_some(session_id)
+            })
+            .ok_or("that player is not here")?;
+
+        let recipient_name = self
+            .sessions
+            .get(&recipient_id)
+            .and_then(ConnectedSession::player)
+            .expect("recipient was checked above")
+            .name()
+            .to_owned();
+
+        let item = self
+            .sessions
+            .get_mut(&giver_id)
+            .and_then(ConnectedSession::player_mut)
+            .expect("giver was checked above")
+            .take_item(requested_item)
+            .ok_or("you are not carrying that item")?;
+
+        let item_name = item.name().to_owned();
+
+        self.sessions
+            .get_mut(&recipient_id)
+            .and_then(ConnectedSession::player_mut)
+            .expect("recipient was checked above")
+            .give_item(item);
+
+        self.send_text(
+            giver_id,
+            format!("You give {item_name} to {recipient_name}.\r\n"),
+        );
+
+        self.send_text(
+            recipient_id,
+            format!("{giver_name} gives you {item_name}.\r\n"),
+        );
+
+        Ok(())
+    }
 }
 
 impl ServerHandle {
