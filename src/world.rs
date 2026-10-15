@@ -174,6 +174,14 @@ impl World {
         Ok(())
     }
 
+    pub fn room_id(&self, key: &str) -> Option<RoomId> {
+        self.room_ids.get(key.trim()).copied()
+    }
+
+    pub fn room_key(&self, room: RoomId) -> Option<&str> {
+        self.room_keys.get(&room).map(String::as_str)
+    }
+
     pub fn add_room(
         &mut self,
         name: impl Into<String>,
