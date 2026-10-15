@@ -97,13 +97,32 @@ struct Room {
 #[derive(Debug)]
 pub struct World {
     rooms: HashMap<RoomId, Room>,
+    room_ids: HashMap<String, RoomId>,
+    room_keys: HashMap<RoomId, String>,
     start_room: RoomId,
     next_room_id: u64,
 }
 
 impl World {
     pub fn new(name: impl Into<String>, description: impl Into<String>) -> Self {
-        let start_room = RoomId(1);
+        Self::new_with_key("start", name, description)
+            .expect("default start room key must be valid")
+    }
+
+    pub fn new_with_key(
+        key: impl Into<String>,
+        name: impl Into<String>,
+        description: impl Into<String>,
+    ) -> Result<Self, WorldError> {
+        let key = key.into();
+        let key = key.trim();
+
+        if key.is_empty() {
+            return Err(WorldError::EmptyRoomKey);
+        }
+
+        let key = key.to_owned();
+        let start_room = RoomId::new(1);
 
         let room = Room {
             name: name.into(),
@@ -112,11 +131,13 @@ impl World {
             items: Vec::new(),
         };
 
-        Self {
+        Ok(Self {
             rooms: HashMap::from([(start_room, room)]),
+            room_ids: HashMap::from([(key.clone(), start_room)]),
+            room_keys: HashMap::from([(start_room, key)]),
             start_room,
             next_room_id: 2,
-        }
+        })
     }
 
     pub(crate) fn demo() -> Self {
