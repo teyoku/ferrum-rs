@@ -318,7 +318,14 @@ impl ServerActor {
             .get_mut(&session_id)
             .ok_or(PlayerNameError::SessionNotFound)?;
 
-        session.state = SessionState::Playing(player);
+        match &mut session.state {
+            SessionState::AwaitingName => {
+                session.state = SessionState::Playing(player);
+            }
+            SessionState::Playing(current_player) => {
+                current_player.rename(&player_name)?;
+            }
+        }
 
         let announcement = match previous_payer {
             Some((previous_name, _)) if previous_name != player_name => Some(format!(
