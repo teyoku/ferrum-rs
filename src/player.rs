@@ -57,14 +57,16 @@ impl Player {
     }
 
     pub(crate) fn take_item(&mut self, name: &str) -> Option<Item> {
-        let normalized_name = name.trim().to_lowercase();
-
         let index = self
             .inventory
             .iter()
-            .position(|item| item.name().to_lowercase() == normalized_name)?;
+            .position(|item| item.matches_name(name))?;
 
         Some(self.inventory.remove(index))
+    }
+
+    pub fn find_item(&self, name: &str) -> Option<&Item> {
+        self.inventory.iter().find(|item| item.matches_name(name))
     }
 }
 
