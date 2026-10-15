@@ -1,4 +1,4 @@
-use std::{collections::HashMap, error::Error, fmt, net::SocketAddr};
+use std::{collections::HashMap, error::Error, f32::consts::E, fmt, net::SocketAddr};
 
 use tokio::sync::{mpsc, oneshot};
 
@@ -453,19 +453,40 @@ impl ServerActor {
         self.look(session_id)
     }
 
-    pub(crate) fn help_text(&self, session_id: SessionId) -> String {
+    pub(crate) fn help_text(&self, session_id: SessionId, command_name: &str) -> String {
         let before_login = !self
             .sessions
             .get(&session_id)
             .is_some_and(ConnectedSession::is_playing);
 
-        let entries = self.commands.help_entries(before_login);
+        if !command_name.is_empty() {
+            let Some(entry) = self.commands.help_entry(command_name, before_login) else {
+                return format!("No help available for '{command_name}'.\r\n");
+            };
 
+            let aliases = if entry.aliases.is_empty() {
+                "none".to_owned()
+            } else {
+                entry.aliases.join(", ")
+            };
+
+            return format!(
+                "Command: {}\r\n\
+                 Usage: {}\r\n\
+                 Aliases: {}\r\n\
+                 Description: {}\r\n",
+                entry.name, entry.usage, aliases, entry.description
+            );
+        }
+
+        let entries = self.commands.help_entries(before_login);
         let mut text = String::from("Commands:\r\n");
 
         for entry in entries {
             text.push_str(&format!("  {:<18} {}\r\n", entry.usage, entry.description));
         }
+
+        text.push_str("Type help <command> for details.\r\n");
 
         text
     }
