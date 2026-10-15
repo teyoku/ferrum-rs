@@ -10,6 +10,7 @@ pub fn register_builtins(registry: &mut CommandRegistry) {
     registry.register(GetCommand);
     registry.register(DropCommand);
     registry.register(InventoryCommand);
+    registry.register(ExamineCommand);
     registry.register(QuitCommand);
 }
 
@@ -272,6 +273,38 @@ impl Command for InventoryCommand {
 
     fn execute(&self, context: &mut CommandContext<'_>) -> CommandResult {
         context.show_inventory()
+    }
+}
+
+#[derive(Debug)]
+pub struct ExamineCommand;
+
+impl Command for ExamineCommand {
+    fn name(&self) -> &'static str {
+        "examine"
+    }
+
+    fn aliases(&self) -> &'static [&'static str] {
+        &["exam", "x"]
+    }
+
+    fn usage(&self) -> &'static str {
+        "examine <item>"
+    }
+
+    fn description(&self) -> &'static str {
+        "Examine an item nearby or in your inventory."
+    }
+
+    fn execute(&self, context: &mut CommandContext<'_>) -> CommandResult {
+        let name = context.args.trim().to_owned();
+
+        if name.is_empty() {
+            context.reply("Examine what?\r\n");
+            return Ok(());
+        }
+
+        context.examine_item(&name)
     }
 }
 
