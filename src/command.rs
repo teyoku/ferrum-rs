@@ -82,6 +82,18 @@ impl<'a> CommandContext<'a> {
     pub fn help_text(&self) -> String {
         self.server.help_text(self.session_id)
     }
+
+    pub fn get_item(&mut self, name: &str) -> CommandResult {
+        self.server.get_item(self.session_id, name)
+    }
+
+    pub fn drop_item(&mut self, name: &str) -> CommandResult {
+        self.server.drop_item(self.session_id, name)
+    }
+
+    pub fn show_inventory(&mut self) -> CommandResult {
+        self.server.show_inventory(self.session_id)
+    }
 }
 
 #[derive(Debug, Default)]
