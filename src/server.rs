@@ -439,6 +439,101 @@ impl ServerActor {
 
         text
     }
+
+    pub(crate) fn get_item(
+        &mut self,
+        session_id: SessionId,
+        requested_name: &str,
+    ) -> Result<(), &'static str> {
+        let (player_name, room) = self
+            .sessions
+            .get(&session_id)
+            .and_then(ConnectedSession::player)
+            .map(|player| (player.name().to_owned(), player.room()))
+            .ok_or("choose a name first")?;
+
+        let item = self
+            .world
+            .take_item(room, requested_name)
+            .ok_or("that item is not here")?;
+
+        let item_name = item.name().to_owned();
+
+        self.sessions
+            .get_mut(&session_id)
+            .and_then(ConnectedSession::player_mut)
+            .expect("player was checked above")
+            .give_item(item);
+
+        self.send_text(session_id, format!("You pick up {item_name}.\r\n"));
+
+        self.send_room(
+            room,
+            Some(session_id),
+            format!("{player_name} picks up {item_name}.\r\n"),
+        );
+
+        Ok(())
+    }
+
+    pub(crate) fn drop_item(
+        &mut self,
+        session_id: SessionId,
+        requested_name: &str,
+    ) -> Result<(), &'static str> {
+        let (player_name, room, item) = {
+            let player = self
+                .sessions
+                .get_mut(&session_id)
+                .and_then(ConnectedSession::player_mut)
+                .ok_or("choose a name first")?;
+
+            let item = player
+                .take_item(requested_name)
+                .ok_or("you are not carrying that item")?;
+
+            (player.name().to_owned(), player.room(), item)
+        };
+
+        let item_name = item.name().to_owned();
+
+        self.world
+            .add_item(room, item)
+            .map_err(|_| "room does not exist")?;
+
+        self.send_text(session_id, format!("You drop {item_name}.\r\n"));
+
+        self.send_room(
+            room,
+            Some(session_id),
+            format!("{player_name} drops {item_name}.\r\n"),
+        );
+
+        Ok(())
+    }
+
+    pub(crate) fn show_inventory(&mut self, session_id: SessionId) -> Result<(), &'static str> {
+        let player = self
+            .sessions
+            .get(&session_id)
+            .and_then(ConnectedSession::player)
+            .ok_or("choose a name first")?;
+
+        let items = if player.inventory().is_empty() {
+            "nothing".to_owned()
+        } else {
+            player
+                .inventory()
+                .iter()
+                .map(|item| item.name())
+                .collect::<Vec<_>>()
+                .join(", ")
+        };
+
+        self.send_text(session_id, format!("You are carrying: {items}.\r\n"));
+
+        Ok(())
+    }
 }
 
 impl ServerHandle {
