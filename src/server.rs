@@ -1167,4 +1167,59 @@ mod tests {
                     == "You are carrying: hammer.\r\n"
         ));
     }
+
+    #[tokio::test]
+    async fn disconnecting_player_drops_their_inventory() {
+        let mut world = World::new("Workshop", "Tools cover a wooden bench.");
+
+        world
+            .add_item(
+                world.start_room(),
+                crate::Item::new("hammer", "A sturdy iron hammer."),
+            )
+            .unwrap();
+
+        let server = ServerActor::spawn_with_world(world);
+
+        let (alex_output, mut alex_events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+
+        let alex_id = server
+            .connect("127.0.0.1:4000".parse().unwrap(), alex_output)
+            .await
+            .unwrap();
+
+        server.input(alex_id, "name Alex".to_owned()).await.unwrap();
+
+        let _ = alex_events.recv().await;
+        let _ = alex_events.recv().await;
+
+        server
+            .input(alex_id, "get hammer".to_owned())
+            .await
+            .unwrap();
+
+        let _ = alex_events.recv().await;
+
+        server.disconnect(alex_id).await.unwrap();
+
+        let (blair_output, mut blair_events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+
+        let blair_id = server
+            .connect("127.0.0.1:4001".parse().unwrap(), blair_output)
+            .await
+            .unwrap();
+
+        server
+            .input(blair_id, "name Blair".to_owned())
+            .await
+            .unwrap();
+
+        let _ = blair_events.recv().await;
+
+        assert!(matches!(
+            blair_events.recv().await,
+            Some(SessionEvent::Text(text))
+                if text.contains("Items here: hammer")
+        ));
+    }
 }
