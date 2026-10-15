@@ -63,10 +63,12 @@ impl Direction {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WorldError {
     RoomNotFound(RoomId),
     RoomIdOverflow,
+    EmptyRoomKey,
+    DuplicateRoomKey(String),
 }
 
 impl fmt::Display for WorldError {
@@ -76,6 +78,8 @@ impl fmt::Display for WorldError {
                 write!(f, "room {room_id} does not exist")
             }
             Self::RoomIdOverflow => f.write_str("room identifier overflowed"),
+            Self::EmptyRoomKey => f.write_str("room key must not be empty"),
+            Self::DuplicateRoomKey(key) => write!(f, "duplicate room key: {key}"),
         }
     }
 }
