@@ -94,6 +94,10 @@ impl<'a> CommandContext<'a> {
     pub fn show_inventory(&mut self) -> CommandResult {
         self.server.show_inventory(self.session_id)
     }
+
+    pub fn examine_item(&mut self, name: &str) -> CommandResult {
+        self.server.examine_item(self.session_id, name)
+    }
 }
 
 #[derive(Debug, Default)]
