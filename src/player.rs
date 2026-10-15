@@ -14,20 +14,7 @@ pub struct Player {
 
 impl Player {
     pub fn new(name: &str, room: RoomId) -> Result<Self, PlayerNameError> {
-        let name = name.trim();
-        let length = name.chars().count();
-
-        if length < MIN_NAME_LENGTH {
-            return Err(PlayerNameError::TooShort);
-        }
-
-        if length > MAX_NAME_LENGTH {
-            return Err(PlayerNameError::TooLong);
-        }
-
-        if !name.chars().all(|c| c.is_alphabetic()) {
-            return Err(PlayerNameError::InvalidCharacters);
-        }
+        let name = Self::validate_name(name)?;
 
         Ok(Self {
             name: name.to_owned(),
@@ -46,6 +33,12 @@ impl Player {
 
     pub fn inventory(&self) -> &[Item] {
         &self.inventory
+    }
+
+    pub(crate) fn rename(&mut self, name: &str) -> Result<(), PlayerNameError> {
+        self.name = Self::validate_name(name)?.to_owned();
+
+        Ok(())
     }
 
     pub(crate) fn move_to(&mut self, room: RoomId) {
@@ -67,6 +60,25 @@ impl Player {
 
     pub fn find_item(&self, name: &str) -> Option<&Item> {
         self.inventory.iter().find(|item| item.matches_name(name))
+    }
+
+    fn validate_name(name: &str) -> Result<&str, PlayerNameError> {
+        let name = name.trim();
+        let length = name.chars().count();
+
+        if length < MIN_NAME_LENGTH {
+            return Err(PlayerNameError::TooShort);
+        }
+
+        if length > MAX_NAME_LENGTH {
+            return Err(PlayerNameError::TooLong);
+        }
+
+        if !name.chars().all(|character| character.is_alphabetic()) {
+            return Err(PlayerNameError::InvalidCharacters);
+        }
+
+        Ok(name)
     }
 }
 
