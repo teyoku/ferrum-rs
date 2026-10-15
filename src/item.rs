@@ -19,4 +19,8 @@ impl Item {
     pub fn description(&self) -> &str {
         &self.description
     }
+
+    pub fn matches_name(&self, name: &str) -> bool {
+        self.name.to_lowercase() == name.trim().to_lowercase()
+    }
 }
