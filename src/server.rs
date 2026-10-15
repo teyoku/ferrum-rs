@@ -1000,4 +1000,85 @@ mod tests {
                 if text == "You drop hammer.\r\n"
         ));
     }
+
+    #[tokio::test]
+    async fn player_can_give_an_item_to_another_player() {
+        let mut world = World::new("Workshop", "Tools cover a wooden bench.");
+
+        world
+            .add_item(
+                world.start_room(),
+                crate::Item::new("iron hammer", "A sturdy iron hammer."),
+            )
+            .unwrap();
+
+        let server = ServerActor::spawn_with_world(world);
+
+        let (alex_output, mut alex_events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+
+        let alex_id = server
+            .connect("127.0.0.1:4000".parse().unwrap(), alex_output)
+            .await
+            .unwrap();
+
+        let (blair_output, mut blair_events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+
+        let blair_id = server
+            .connect("127.0.0.1:4001".parse().unwrap(), blair_output)
+            .await
+            .unwrap();
+
+        server.input(alex_id, "name Alex".to_owned()).await.unwrap();
+
+        let _ = alex_events.recv().await;
+        let _ = alex_events.recv().await;
+
+        server
+            .input(blair_id, "name Blair".to_owned())
+            .await
+            .unwrap();
+
+        let _ = blair_events.recv().await;
+        let _ = blair_events.recv().await;
+        let _ = alex_events.recv().await;
+
+        server
+            .input(alex_id, "get iron hammer".to_owned())
+            .await
+            .unwrap();
+
+        let _ = alex_events.recv().await;
+        let _ = blair_events.recv().await;
+
+        server
+            .input(alex_id, "give iron hammer Blair".to_owned())
+            .await
+            .unwrap();
+
+        assert!(matches!(
+            alex_events.recv().await,
+            Some(SessionEvent::Text(text))
+                if text
+                    == "You give iron hammer to Blair.\r\n"
+        ));
+
+        assert!(matches!(
+            blair_events.recv().await,
+            Some(SessionEvent::Text(text))
+                if text
+                    == "Alex gives you iron hammer.\r\n"
+        ));
+
+        server
+            .input(blair_id, "inventory".to_owned())
+            .await
+            .unwrap();
+
+        assert!(matches!(
+            blair_events.recv().await,
+            Some(SessionEvent::Text(text))
+                if text
+                    == "You are carrying: iron hammer.\r\n"
+        ));
+    }
 }
