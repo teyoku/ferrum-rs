@@ -1088,4 +1088,60 @@ mod tests {
                     == "You are carrying: iron hammer.\r\n"
         ));
     }
+
+    #[tokio::test]
+    async fn renaming_a_player_preserves_their_inventory() {
+        let mut world = World::new("Workshop", "Tools cover a wooden bench.");
+
+        world
+            .add_item(
+                world.start_room(),
+                crate::Item::new("hammer", "A sturdy iron hammer."),
+            )
+            .unwrap();
+
+        let server = ServerActor::spawn_with_world(world);
+
+        let (output, mut events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+
+        let session_id = server
+            .connect("127.0.0.1:4000".parse().unwrap(), output)
+            .await
+            .unwrap();
+
+        server
+            .input(session_id, "name Alex".to_owned())
+            .await
+            .unwrap();
+
+        let _ = events.recv().await;
+        let _ = events.recv().await;
+
+        server
+            .input(session_id, "get hammer".to_owned())
+            .await
+            .unwrap();
+
+        let _ = events.recv().await;
+
+        server
+            .input(session_id, "name Alicia".to_owned())
+            .await
+            .unwrap();
+
+        let _ = events.recv().await;
+        let _ = events.recv().await;
+
+        server
+            .input(session_id, "inventory".to_owned())
+            .await
+            .unwrap();
+
+        assert!(matches!(
+            events.recv().await,
+            Some(SessionEvent::Text(text))
+                if text
+                    == "You are carrying: hammer.\r\n"
+        ));
+    }
 }
