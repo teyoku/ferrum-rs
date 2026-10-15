@@ -11,6 +11,7 @@ pub fn register_builtins(registry: &mut CommandRegistry) {
     registry.register(DropCommand);
     registry.register(InventoryCommand);
     registry.register(ExamineCommand);
+    registry.register(GiveCommand);
     registry.register(QuitCommand);
 }
 
@@ -305,6 +306,38 @@ impl Command for ExamineCommand {
         }
 
         context.examine_item(&name)
+    }
+}
+
+#[derive(Debug)]
+pub struct GiveCommand;
+
+impl Command for GiveCommand {
+    fn name(&self) -> &'static str {
+        "give"
+    }
+
+    fn usage(&self) -> &'static str {
+        "give <item> <player>"
+    }
+
+    fn description(&self) -> &'static str {
+        "Give an item to a player in the same room."
+    }
+
+    fn execute(&self, context: &mut CommandContext<'_>) -> CommandResult {
+        let mut parts = context.args.trim().rsplitn(2, char::is_whitespace);
+
+        let recipient_name = parts.next().unwrap_or("").trim().to_owned();
+
+        let item_name = parts.next().unwrap_or("").trim().to_owned();
+
+        if item_name.is_empty() || recipient_name.is_empty() {
+            context.reply("Usage: give <item> <player>\r\n");
+            return Ok(());
+        }
+
+        context.give_item(&item_name, &recipient_name)
     }
 }
 
