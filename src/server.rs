@@ -1243,4 +1243,52 @@ mod tests {
                 if text.contains("Items here: hammer")
         ));
     }
+
+    #[tokio::test]
+    async fn help_describes_a_command_by_its_alias() {
+        let server = ServerActor::spawn();
+
+        let (output, mut events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+
+        let session_id = server
+            .connect("127.0.0.1:4000".parse().unwrap(), output)
+            .await
+            .unwrap();
+
+        server
+            .input(session_id, "help look".to_owned())
+            .await
+            .unwrap();
+
+        assert!(matches!(
+            events.recv().await,
+            Some(SessionEvent::Text(text))
+                if text
+                    == "No help available for 'look'.\r\n"
+        ));
+
+        server
+            .input(session_id, "name Alex".to_owned())
+            .await
+            .unwrap();
+
+        let _ = events.recv().await;
+        let _ = events.recv().await;
+
+        server.input(session_id, "help x".to_owned()).await.unwrap();
+
+        let expected = concat!(
+            "Command: examine\r\n",
+            "Usage: examine <item>\r\n",
+            "Aliases: exam, x\r\n",
+            "Description: Examine an item nearby or ",
+            "in your inventory.\r\n",
+        );
+
+        assert!(matches!(
+            events.recv().await,
+            Some(SessionEvent::Text(text))
+                if text == expected
+        ));
+    }
 }
