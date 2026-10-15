@@ -394,4 +394,20 @@ mod tests {
             Err(RoomNotFound(missing))
         );
     }
+
+    #[test]
+    fn resolves_rooms_by_stable_key() {
+        let mut world =
+            World::new_with_key("dock", "Dock", "Cold waves strike the old pier.").unwrap();
+
+        let warehouse = world
+            .add_room_with_key("warehouse", "Warehouse", "Dusty crates fill the room.")
+            .unwrap();
+
+        assert_eq!(world.room_id("dock"), Some(world.start_room()));
+
+        assert_eq!(world.room_id("warehouse"), Some(warehouse));
+
+        assert_eq!(world.room_key(warehouse), Some("warehouse"));
+    }
 }
