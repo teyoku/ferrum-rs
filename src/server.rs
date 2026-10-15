@@ -816,10 +816,12 @@ mod tests {
     async fn player_can_pick_up_and_drop_an_item() {
         let mut world = World::new("Workshop", "Tools cover a wooden bench.");
 
-        world.add_item(
-            world.start_room(),
-            crate::Item::new("hammer", "A sturdy iron hammer."),
-        );
+        world
+            .add_item(
+                world.start_room(),
+                crate::Item::new("hammer", "A sturdy iron hammer."),
+            )
+            .unwrap();
 
         let server = ServerActor::spawn_with_world(world);
 
