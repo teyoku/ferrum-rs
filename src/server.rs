@@ -899,6 +899,17 @@ mod tests {
         ));
 
         server
+            .input(session_id, "x hammer".to_owned())
+            .await
+            .unwrap();
+
+        assert!(matches!(
+            events.recv().await,
+            Some(SessionEvent::Text(text))
+                if text == "A sturdy iron hammer.\r\n"
+        ));
+
+        server
             .input(session_id, "inventory".to_owned())
             .await
             .unwrap();
