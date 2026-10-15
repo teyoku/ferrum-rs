@@ -174,7 +174,6 @@ impl CommandRegistry {
         entries
     }
 
-
     pub fn help_entry(&self, name: &str, before_login: bool) -> Option<CommandHelp> {
         let normalized_name = name.trim().to_lowercase();
         let command = self.commands.get(&normalized_name)?;
