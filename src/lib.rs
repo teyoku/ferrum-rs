@@ -1,5 +1,6 @@
 pub mod command;
 pub mod commands;
+pub mod item;
 pub mod player;
 pub mod server;
 pub mod session;
