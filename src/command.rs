@@ -98,6 +98,11 @@ impl<'a> CommandContext<'a> {
     pub fn examine_item(&mut self, name: &str) -> CommandResult {
         self.server.examine_item(self.session_id, name)
     }
+
+    pub fn give_item(&mut self, item_name: &str, recipient_name: &str) -> CommandResult {
+        self.server
+            .give_item(self.session_id, item_name, recipient_name)
+    }
 }
 
 #[derive(Debug, Default)]
