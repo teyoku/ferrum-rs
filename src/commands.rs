@@ -172,7 +172,7 @@ pub struct HelpCommand;
 
 impl Command for HelpCommand {
     fn name(&self) -> &'static str {
-        "help"
+        "help [command]"
     }
 
     fn aliases(&self) -> &'static [&'static str] {
@@ -188,7 +188,8 @@ impl Command for HelpCommand {
     }
 
     fn execute(&self, context: &mut CommandContext<'_>) -> CommandResult {
-        let text = context.help_text();
+        let command_name = context.args.trim().to_owned();
+        let text = context.help_text(&command_name);
 
         context.reply(text);
 
