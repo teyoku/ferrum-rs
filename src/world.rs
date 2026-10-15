@@ -273,14 +273,18 @@ impl World {
 
     pub fn take_item(&mut self, room: RoomId, name: &str) -> Option<Item> {
         let room = self.rooms.get_mut(&room)?;
-        let normalized_name = name.trim().to_lowercase();
 
-        let index = room
-            .items
-            .iter()
-            .position(|item| item.name().to_lowercase() == normalized_name)?;
+        let index = room.items.iter().position(|item| item.matches_name(name))?;
 
         Some(room.items.remove(index))
+    }
+
+    pub fn find_item(&self, room: RoomId, name: &str) -> Option<&Item> {
+        self.rooms
+            .get(&room)?
+            .items
+            .iter()
+            .find(|item| item.matches_name(name))
     }
 }
 
