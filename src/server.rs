@@ -256,7 +256,7 @@ impl ServerActor {
             .is_some_and(|session| session.output.try_send(event).is_err());
 
         if should_remove {
-            self.sessions.remove(&session_id);
+            self.disconnect(session_id);
         }
     }
 
