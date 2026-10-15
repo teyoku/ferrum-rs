@@ -7,6 +7,9 @@ pub fn register_builtins(registry: &mut CommandRegistry) {
     registry.register(LookCommand);
     registry.register(GoCommand);
     registry.register(HelpCommand);
+    registry.register(GetCommand);
+    registry.register(DropCommand);
+    registry.register(InventoryCommand);
     registry.register(QuitCommand);
 }
 
@@ -188,6 +191,87 @@ impl Command for HelpCommand {
         context.reply(text);
 
         Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub struct GetCommand;
+
+impl Command for GetCommand {
+    fn name(&self) -> &'static str {
+        "get"
+    }
+
+    fn aliases(&self) -> &'static [&'static str] {
+        &["take"]
+    }
+
+    fn usage(&self) -> &'static str {
+        "get <item>"
+    }
+
+    fn description(&self) -> &'static str {
+        "Pick up an item from the room."
+    }
+
+    fn execute(&self, context: &mut CommandContext<'_>) -> CommandResult {
+        let name = context.args.trim().to_owned();
+
+        if name.is_empty() {
+            context.reply("Get what?\r\n");
+            return Ok(());
+        }
+
+        context.get_item(&name)
+    }
+}
+
+#[derive(Debug)]
+pub struct DropCommand;
+
+impl Command for DropCommand {
+    fn name(&self) -> &'static str {
+        "drop"
+    }
+
+    fn usage(&self) -> &'static str {
+        "drop <item>"
+    }
+
+    fn description(&self) -> &'static str {
+        "Drop an item into the room."
+    }
+
+    fn execute(&self, context: &mut CommandContext<'_>) -> CommandResult {
+        let name = context.args.trim().to_owned();
+
+        if name.is_empty() {
+            context.reply("Drop what?\r\n");
+            return Ok(());
+        }
+
+        context.drop_item(&name)
+    }
+}
+
+#[derive(Debug)]
+pub struct InventoryCommand;
+
+impl Command for InventoryCommand {
+    fn name(&self) -> &'static str {
+        "inventory"
+    }
+
+    fn aliases(&self) -> &'static [&'static str] {
+        &["inv", "i"]
+    }
+
+    fn description(&self) -> &'static str {
+        "Show the items you are carrying."
+    }
+
+    fn execute(&self, context: &mut CommandContext<'_>) -> CommandResult {
+        context.show_inventory()
     }
 }
 
