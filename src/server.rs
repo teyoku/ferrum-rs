@@ -774,6 +774,8 @@ impl ServerHandle {
 
 #[cfg(test)]
 mod tests {
+    use crate::Hook;
+
     use super::*;
 
     #[tokio::test]
@@ -1391,6 +1393,59 @@ mod tests {
             events.recv().await,
             Some(SessionEvent::Text(text))
                 if text.contains("Town Square")
+        ));
+    }
+
+    #[derive(Debug)]
+    struct EchoSpeech;
+
+    impl Hook for EchoSpeech {
+        fn after_say(&self, event: &SayEvent, context: &mut HookContext) {
+            context.broadcast(event.room, format!("An echo repeats: {}", event.message));
+        }
+    }
+
+    #[tokio::test]
+    async fn speech_hook_can_add_a_room_message() {
+        let mut commands = CommandRegistry::new();
+        register_builtins(&mut commands);
+
+        let mut hooks = HookRegistry::new();
+        hooks.register(EchoSpeech);
+
+        let server =
+            ServerActor::spawn_with_registry_hooks_and_world(commands, hooks, World::demo());
+
+        let (output, mut events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+
+        let session_id = server
+            .connect("127.0.0.1:4000".parse().unwrap(), output)
+            .await
+            .unwrap();
+
+        server
+            .input(session_id, "name Alex".to_owned())
+            .await
+            .unwrap();
+
+        let _ = events.recv().await;
+        let _ = events.recv().await;
+
+        server
+            .input(session_id, "say hello".to_owned())
+            .await
+            .unwrap();
+
+        assert!(matches!(
+            events.recv().await,
+            Some(SessionEvent::Text(text))
+                if text == "You say: hello\r\n"
+        ));
+
+        assert!(matches!(
+            events.recv().await,
+            Some(SessionEvent::Text(text))
+                if text == "An echo repeats: hello\r\n"
         ));
     }
 }
