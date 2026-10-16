@@ -1,4 +1,4 @@
-use crate::item::Item;
+use crate::item::{Item, ItemId};
 use core::fmt;
 use std::{collections::HashMap, error::Error};
 
@@ -67,6 +67,7 @@ impl Direction {
 pub enum WorldError {
     RoomNotFound(RoomId),
     RoomIdOverflow,
+    ItemIdOverflow,
     EmptyRoomKey,
     DuplicateRoomKey(String),
 }
@@ -78,6 +79,7 @@ impl fmt::Display for WorldError {
                 write!(f, "room {room_id} does not exist")
             }
             Self::RoomIdOverflow => f.write_str("room identifier overflowed"),
+            Self::ItemIdOverflow => f.write_str("item identifier overflowed"),
             Self::EmptyRoomKey => f.write_str("room key must not be empty"),
             Self::DuplicateRoomKey(key) => write!(f, "duplicate room key: {key}"),
         }
@@ -101,6 +103,7 @@ pub struct World {
     room_keys: HashMap<RoomId, String>,
     start_room: RoomId,
     next_room_id: u64,
+    next_item_id: u64,
 }
 
 impl World {
@@ -137,6 +140,7 @@ impl World {
             room_keys: HashMap::from([(start_room, key)]),
             start_room,
             next_room_id: 2,
+            next_item_id: 1,
         })
     }
 
@@ -330,6 +334,26 @@ impl World {
         Ok(())
     }
 
+    pub fn create_item(
+        &mut self,
+        room: RoomId,
+        name: impl Into<String>,
+        description: impl Into<String>,
+    ) -> Result<ItemId, WorldError> {
+        self.require_room(room)?;
+
+        let item_id = ItemId::new(self.next_item_id);
+
+        self.next_item_id = self
+            .next_item_id
+            .checked_add(1)
+            .ok_or(WorldError::ItemIdOverflow)?;
+
+        self.add_item(room, Item::new(item_id, name, description))?;
+
+        Ok(item_id)
+    }
+
     pub fn take_item(&mut self, room: RoomId, name: &str) -> Option<Item> {
         let room = self.rooms.get_mut(&room)?;
 
@@ -344,6 +368,14 @@ impl World {
             .items
             .iter()
             .find(|item| item.matches_name(name))
+    }
+
+    pub fn find_item_by_id(&self, room: RoomId, item_id: ItemId) -> Option<&Item> {
+        self.rooms
+            .get(&room)?
+            .items
+            .iter()
+            .find(|item| item.id() == item_id)
     }
 }
 
