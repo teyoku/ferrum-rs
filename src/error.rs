@@ -38,3 +38,16 @@ impl From<String> for GameError {
 }
 
 pub type GameResult<T = ()> = Result<T, GameError>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn accepts_owned_contextual_messages() {
+        let error = GameError::new(format!("the {} gate is closed", "north"));
+
+        assert_eq!(error.message(), "the north gate is closed");
+        assert_eq!(error.to_string(), "the north gate is closed");
+    }
+}
