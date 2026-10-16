@@ -20,6 +20,12 @@ pub struct SayEvent {
     pub message: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum HookEffect {
+    Reply(String),
+    Broadcast { room: RoomId, text: String },
+}
+
 pub trait Hook: Debug + Send + Sync {
     fn before_move(&self, _event: &MoveEvent) -> GameResult {
         Ok(())
