@@ -48,3 +48,32 @@ impl HookRegistry {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Debug)]
+    struct ClosedGate;
+
+    impl Hook for ClosedGate {
+        fn before_move(&self, _event: &MoveEvent) -> Result<(), &'static str> {
+            Err("the gate is closed")
+        }
+    }
+
+    #[test]
+    fn a_hook_can_cancel_movement() {
+        let mut hooks = HookRegistry::new();
+        hooks.register(ClosedGate);
+
+        let event = MoveEvent {
+            player_name: "Alex".to_owned(),
+            from: RoomId::new(1),
+            to: RoomId::new(2),
+            direction: Direction::North,
+        };
+
+        assert_eq!(hooks.before_move(&event), Err("the gate is closed"));
+    }
+}
