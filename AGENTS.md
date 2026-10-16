@@ -22,6 +22,7 @@ FerrumMUD is a Rust 2024, Tokio-based text MUD. The binary loads a JSON world, l
 - `src/item.rs`: item identity and metadata
 - `src/server/tests.rs`: asynchronous server integration tests
 - `data/world.json`: bundled example world
+- `CHANGELOG.md`: user-visible release history
 
 ## Working conventions
 
@@ -64,3 +65,4 @@ Add or update tests for behavior changes. Unit tests should stay near the module
 - Do not rewrite unrelated code or discard existing local changes.
 - Treat `Cargo.lock` as part of the repository and update it when dependencies change.
 - Update the README when commands, configuration, setup steps, architecture, or the world format changes.
+- Update `CHANGELOG.md` and the package version when preparing a release.
