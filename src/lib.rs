@@ -23,6 +23,6 @@ pub use world_loader::{WorldLoadError, load_world, parse_world};
 
 pub use item::Item;
 
-pub use hooks::{Hook, HookRegistry, MoveEvent};
+pub use hooks::{Hook, HookContext, HookRegistry, MoveEvent, SayEvent};
 
 pub use error::{GameError, GameResult};
