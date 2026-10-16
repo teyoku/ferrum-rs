@@ -336,13 +336,13 @@ impl ServerActor {
         session_id: SessionId,
         name: &str,
     ) -> Result<(), PlayerNameError> {
-        let previous_payer = self
+        let previous_player = self
             .sessions
             .get(&session_id)
             .and_then(ConnectedSession::player)
             .map(|player| (player.name().to_owned(), player.room()));
 
-        let room = previous_payer
+        let room = previous_player
             .as_ref()
             .map(|(_, room)| *room)
             .unwrap_or_else(|| self.world.start_room());
@@ -376,9 +376,10 @@ impl ServerActor {
             }
         }
 
-        let announcement = match previous_payer {
+        let announcement = match previous_player {
             Some((previous_name, _)) if previous_name != player_name => Some(format!(
-                "{previous_name} is now known as {player_name}.\r\n"
+                "{previous_name} is now known as \
+             {player_name}.\r\n"
             )),
             Some(_) => None,
             None => Some(format!("{player_name} enters the game.\r\n")),
