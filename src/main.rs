@@ -1,6 +1,6 @@
 use std::{env, error::Error};
 
-use ferrum_rs::{ServerActor, load_world, process_client};
+use ferrum_rs::{ServerActor, load_world, parse_world, process_client};
 use tokio::net::TcpListener;
 
 #[tokio::main]
@@ -15,9 +15,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let listener = TcpListener::bind(&address).await?;
 
-    let world_file = env::var("WORLD_FILE").unwrap_or_else(|_| "data/world.json".to_owned());
-
-    let world = load_world(world_file)?;
+    // Embed the example so binaries installed with `cargo install` work even
+    // though Cargo does not install package data files beside executables.
+    let world = match env::var("WORLD_FILE") {
+        Ok(world_file) => load_world(world_file)?,
+        Err(_) => parse_world(include_str!("../data/world.json"))?,
+    };
 
     let server = ServerActor::spawn_with_world(world);
 
