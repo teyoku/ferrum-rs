@@ -78,6 +78,9 @@ mod tests {
             direction: Direction::North,
         };
 
-        assert_eq!(hooks.before_move(&event), Err("the gate is closed".into()));
+        assert_eq!(
+            hooks.before_move(&event),
+            Err("the north gate is closed".into())
+        );
     }
 }
