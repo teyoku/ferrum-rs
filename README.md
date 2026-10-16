@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/teyoku/ferrum-rs/main/media/logo.png" alt="FerrumMUD logo" height="250">
+  <img src="/media/logo.png" alt="FerrumMUD logo" height="250">
 </p>
 
 # FerrumMUD
