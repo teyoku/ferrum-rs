@@ -5,6 +5,7 @@ use tokio::sync::{mpsc, oneshot};
 use crate::{
     command::{CommandContext, CommandRegistry},
     commands::register_builtins,
+    hooks::{HookRegistry, MoveEvent},
     player::{Player, PlayerNameError},
     world::{Direction, RoomId, World},
 };
@@ -53,6 +54,7 @@ pub struct ServerActor {
     next_session_id: u64,
     receiver: mpsc::Receiver<ServerCommand>,
     commands: CommandRegistry,
+    hooks: HookRegistry,
     world: World,
 }
 
@@ -124,6 +126,14 @@ impl ServerActor {
     }
 
     pub fn spawn_with_registry_and_world(commands: CommandRegistry, world: World) -> ServerHandle {
+        Self::spawn_with_registry_hooks_and_world(commands, HookRegistry::new(), world)
+    }
+
+    pub fn spawn_with_registry_hooks_and_world(
+        commands: CommandRegistry,
+        hooks: HookRegistry,
+        world: World,
+    ) -> ServerHandle {
         let (sender, receiver) = mpsc::channel(SERVER_MAILBOX_CAPACITY);
 
         let actor = Self {
@@ -131,6 +141,7 @@ impl ServerActor {
             next_session_id: 1,
             receiver,
             commands,
+            hooks,
             world,
         };
 
