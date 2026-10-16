@@ -1,4 +1,7 @@
-use crate::hooks::Hook;
+use crate::{
+    error::GameResult,
+    hooks::{Effect, GameEvent, Hook},
+};
 
 use super::*;
 
