@@ -130,7 +130,7 @@ mod tests {
     struct ClosedGate;
 
     impl Hook for ClosedGate {
-        fn before_move(&self, event: &MoveEvent) -> GameResult {
+        fn before_move(&self, event: &MoveEvent, _context: &mut HookContext) -> GameResult {
             Err(format!("the {} gate is closed", event.direction.as_str()).into())
         }
     }
@@ -147,9 +147,31 @@ mod tests {
             direction: Direction::North,
         };
 
+        let mut context = HookContext::new();
+
         assert_eq!(
-            hooks.before_move(&event),
+            hooks.before_move(&event, &mut context),
             Err("the north gate is closed".into())
+        );
+    }
+
+    #[test]
+    fn context_collects_hook_effects() {
+        let mut context = HookContext::new();
+
+        context.reply("A whisper reaches you.");
+
+        context.broadcast(RoomId::new(1), "The room grows colder.");
+
+        assert_eq!(
+            context.into_effects(),
+            vec![
+                HookEffect::Reply("A whisper reaches you.\r\n".to_owned()),
+                HookEffect::Broadcast {
+                    room: RoomId::new(1),
+                    text: "The room grows colder.\r\n".to_owned(),
+                },
+            ]
         );
     }
 }
