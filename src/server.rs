@@ -6,7 +6,7 @@ use crate::{
     command::{CommandContext, CommandRegistry},
     commands::register_builtins,
     error::GameResult,
-    hooks::{HookContext, HookEffect, HookRegistry, MoveEvent, SayEvent},
+    hooks::{Effect, EffectKind, GameEvent, HookRegistry},
     player::{Player, PlayerNameError},
     world::{Direction, RoomId, World},
 };
@@ -298,17 +298,15 @@ impl ServerActor {
             return Err("choose a name before speaking".into());
         };
 
-        let event = SayEvent {
+        let event = GameEvent::Say {
             player_name: sender_name.clone(),
             room,
             message: message.to_owned(),
         };
 
-        let mut context = HookContext::new();
+        let effects = self.hooks.before(&event)?;
 
-        self.hooks.before_say(&event, &mut context)?;
-
-        self.apply_hook_effects(sender_id, context.into_effects());
+        self.apply_hook_effects(sender_id, effects);
 
         self.send_text(sender_id, format!("You say: {message}\r\n"));
 
@@ -318,11 +316,9 @@ impl ServerActor {
             format!("{sender_name} says: {message}\r\n"),
         );
 
-        let mut context = HookContext::new();
+        let effects = self.hooks.after(&event);
 
-        self.hooks.after_say(&event, &mut context);
-
-        self.apply_hook_effects(sender_id, context.into_effects());
+        self.apply_hook_effects(sender_id, effects);
 
         Ok(())
     }
@@ -453,18 +449,16 @@ impl ServerActor {
             .destination(current, direction)
             .ok_or("there is no exit that way")?;
 
-        let event = MoveEvent {
+        let event = GameEvent::Move {
             player_name: player_name.clone(),
             from: current,
             to: destination,
             direction,
         };
 
-        let mut context = HookContext::new();
+        let effects = self.hooks.before(&event)?;
 
-        self.hooks.before_move(&event, &mut context)?;
-
-        self.apply_hook_effects(session_id, context.into_effects());
+        self.apply_hook_effects(session_id, effects);
 
         self.send_room(
             current,
@@ -480,11 +474,9 @@ impl ServerActor {
 
         player.move_to(destination);
 
-        let mut context = HookContext::new();
+        let effects = self.hooks.after(&event);
 
-        self.hooks.after_move(&event, &mut context);
-
-        self.apply_hook_effects(session_id, context.into_effects());
+        self.apply_hook_effects(session_id, effects);
 
         self.send_room(
             destination,
@@ -723,13 +715,13 @@ impl ServerActor {
         Ok(())
     }
 
-    fn apply_hook_effects(&mut self, actor_id: SessionId, effects: Vec<HookEffect>) {
+    fn apply_hook_effects(&mut self, actor_id: SessionId, effects: Vec<Effect>) {
         for effect in effects {
-            match effect {
-                HookEffect::Reply(text) => {
+            match effect.into_kind() {
+                EffectKind::Reply(text) => {
                     self.send_text(actor_id, text);
                 }
-                HookEffect::Broadcast { room, text } => {
+                EffectKind::Broadcast { room, text } => {
                     self.send_room(room, None, text);
                 }
             }
@@ -1347,9 +1339,13 @@ mod tests {
     #[derive(Debug)]
     struct ClosedGate;
 
-    impl crate::Hook for ClosedGate {
-        fn before_move(&self, _event: &MoveEvent, _context: &mut HookContext) -> GameResult {
-            Err("the gate is closed".into())
+    impl Hook for ClosedGate {
+        fn before(&self, event: &GameEvent) -> GameResult<Vec<Effect>> {
+            match event {
+                GameEvent::Move { .. } => Err("the gate is closed".into()),
+
+                _ => Ok(Vec::new()),
+            }
         }
     }
 
@@ -1400,8 +1396,15 @@ mod tests {
     struct EchoSpeech;
 
     impl Hook for EchoSpeech {
-        fn after_say(&self, event: &SayEvent, context: &mut HookContext) {
-            context.broadcast(event.room, format!("An echo repeats: {}", event.message));
+        fn after(&self, event: &GameEvent) -> Vec<Effect> {
+            let GameEvent::Say { room, message, .. } = event else {
+                return Vec::new();
+            };
+
+            vec![Effect::broadcast(
+                *room,
+                format!("An echo repeats: {message}"),
+            )]
         }
     }
 

@@ -6,49 +6,51 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MoveEvent {
-    pub player_name: String,
-    pub from: RoomId,
-    pub to: RoomId,
-    pub direction: Direction,
+pub enum GameEvent {
+    Move {
+        player_name: String,
+        from: RoomId,
+        to: RoomId,
+        direction: Direction,
+    },
+
+    Say {
+        player_name: String,
+        room: RoomId,
+        message: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SayEvent {
-    pub player_name: String,
-    pub room: RoomId,
-    pub message: String,
+pub struct Effect {
+    kind: EffectKind,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum HookEffect {
+pub(crate) enum EffectKind {
     Reply(String),
+
     Broadcast { room: RoomId, text: String },
 }
 
-#[derive(Debug, Default)]
-pub struct HookContext {
-    effects: Vec<HookEffect>,
-}
-
-impl HookContext {
-    pub fn new() -> Self {
-        Self::default()
+impl Effect {
+    pub fn reply(text: impl Into<String>) -> Self {
+        Self {
+            kind: EffectKind::Reply(with_newline(text)),
+        }
     }
 
-    pub fn reply(&mut self, text: impl Into<String>) {
-        self.effects.push(HookEffect::Reply(with_newline(text)));
+    pub fn broadcast(room: RoomId, text: impl Into<String>) -> Self {
+        Self {
+            kind: EffectKind::Broadcast {
+                room,
+                text: with_newline(text),
+            },
+        }
     }
 
-    pub fn broadcast(&mut self, room: RoomId, text: impl Into<String>) {
-        self.effects.push(HookEffect::Broadcast {
-            room,
-            text: with_newline(text),
-        });
-    }
-
-    pub(crate) fn into_effects(self) -> Vec<HookEffect> {
-        self.effects
+    pub(crate) fn into_kind(self) -> EffectKind {
+        self.kind
     }
 }
 
@@ -61,19 +63,14 @@ fn with_newline(text: impl Into<String>) -> String {
 
     text
 }
-
 pub trait Hook: Debug + Send + Sync {
-    fn before_move(&self, _event: &MoveEvent, _context: &mut HookContext) -> GameResult {
-        Ok(())
+    fn before(&self, _event: &GameEvent) -> GameResult<Vec<Effect>> {
+        Ok(Vec::new())
     }
 
-    fn after_move(&self, _event: &MoveEvent, _context: &mut HookContext) {}
-
-    fn before_say(&self, _event: &SayEvent, _context: &mut HookContext) -> GameResult {
-        Ok(())
+    fn after(&self, _event: &GameEvent) -> Vec<Effect> {
+        Vec::new()
     }
-
-    fn after_say(&self, _event: &SayEvent, _context: &mut HookContext) {}
 }
 
 #[derive(Debug, Default)]
@@ -93,32 +90,21 @@ impl HookRegistry {
         self.hooks.push(Arc::new(hook));
     }
 
-    pub(crate) fn before_move(&self, event: &MoveEvent, context: &mut HookContext) -> GameResult {
+    pub(crate) fn before(&self, event: &GameEvent) -> GameResult<Vec<Effect>> {
+        let mut effects = Vec::new();
+
         for hook in &self.hooks {
-            hook.before_move(event, context)?;
+            effects.extend(hook.before(event)?);
         }
 
-        Ok(())
+        Ok(effects)
     }
 
-    pub(crate) fn after_move(&self, event: &MoveEvent, context: &mut HookContext) {
-        for hook in &self.hooks {
-            hook.after_move(event, context);
-        }
-    }
-
-    pub(crate) fn before_say(&self, event: &SayEvent, context: &mut HookContext) -> GameResult {
-        for hook in &self.hooks {
-            hook.before_say(event, context)?;
-        }
-
-        Ok(())
-    }
-
-    pub(crate) fn after_say(&self, event: &SayEvent, context: &mut HookContext) {
-        for hook in &self.hooks {
-            hook.after_say(event, context);
-        }
+    pub(crate) fn after(&self, event: &GameEvent) -> Vec<Effect> {
+        self.hooks
+            .iter()
+            .flat_map(|hook| hook.after(event))
+            .collect()
     }
 }
 
@@ -130,8 +116,12 @@ mod tests {
     struct ClosedGate;
 
     impl Hook for ClosedGate {
-        fn before_move(&self, event: &MoveEvent, _context: &mut HookContext) -> GameResult {
-            Err(format!("the {} gate is closed", event.direction.as_str()).into())
+        fn before(&self, event: &GameEvent) -> GameResult<Vec<Effect>> {
+            let GameEvent::Move { direction, .. } = event else {
+                return Ok(Vec::new());
+            };
+
+            Err(format!("the {} gate is closed", direction.as_str()).into())
         }
     }
 
@@ -140,38 +130,21 @@ mod tests {
         let mut hooks = HookRegistry::new();
         hooks.register(ClosedGate);
 
-        let event = MoveEvent {
+        let event = GameEvent::Move {
             player_name: "Alex".to_owned(),
             from: RoomId::new(1),
             to: RoomId::new(2),
             direction: Direction::North,
         };
 
-        let mut context = HookContext::new();
-
-        assert_eq!(
-            hooks.before_move(&event, &mut context),
-            Err("the north gate is closed".into())
-        );
+        assert_eq!(hooks.before(&event), Err("the north gate is closed".into()));
     }
 
     #[test]
-    fn context_collects_hook_effects() {
-        let mut context = HookContext::new();
-
-        context.reply("A whisper reaches you.");
-
-        context.broadcast(RoomId::new(1), "The room grows colder.");
-
+    fn effect_adds_a_network_newline() {
         assert_eq!(
-            context.into_effects(),
-            vec![
-                HookEffect::Reply("A whisper reaches you.\r\n".to_owned()),
-                HookEffect::Broadcast {
-                    room: RoomId::new(1),
-                    text: "The room grows colder.\r\n".to_owned(),
-                },
-            ]
+            Effect::reply("A whisper reaches you.").into_kind(),
+            EffectKind::Reply("A whisper reaches you.\r\n".to_owned())
         );
     }
 }
