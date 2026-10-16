@@ -1,6 +1,9 @@
 use std::{fmt::Debug, sync::Arc};
 
-use crate::world::{Direction, RoomId};
+use crate::{
+    error::GameResult,
+    world::{Direction, RoomId},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MoveEvent {
@@ -11,7 +14,7 @@ pub struct MoveEvent {
 }
 
 pub trait Hook: Debug + Send + Sync {
-    fn before_move(&self, _event: &MoveEvent) -> Result<(), &'static str> {
+    fn before_move(&self, _event: &MoveEvent) -> GameResult {
         Ok(())
     }
 
@@ -35,7 +38,7 @@ impl HookRegistry {
         self.hooks.push(Arc::new(hook));
     }
 
-    pub(crate) fn before_move(&self, event: &MoveEvent) -> Result<(), &'static str> {
+    pub(crate) fn before_move(&self, event: &MoveEvent) -> GameResult {
         for hook in &self.hooks {
             hook.before_move(event)?;
         }
@@ -58,8 +61,8 @@ mod tests {
     struct ClosedGate;
 
     impl Hook for ClosedGate {
-        fn before_move(&self, _event: &MoveEvent) -> Result<(), &'static str> {
-            Err("the gate is closed")
+        fn before_move(&self, event: &MoveEvent) -> GameResult {
+            Err(format!("the {} gate is closed", event.direction.as_str()).into())
         }
     }
 
@@ -75,6 +78,6 @@ mod tests {
             direction: Direction::North,
         };
 
-        assert_eq!(hooks.before_move(&event), Err("the gate is closed"));
+        assert_eq!(hooks.before_move(&event), Err("the gate is closed".into()));
     }
 }
