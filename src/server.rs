@@ -6,7 +6,7 @@ use crate::{
     command::{CommandContext, CommandRegistry},
     commands::register_builtins,
     error::GameResult,
-    hooks::{HookRegistry, MoveEvent},
+    hooks::{HookContext, HookEffect, HookRegistry, MoveEvent, SayEvent},
     player::{Player, PlayerNameError},
     world::{Direction, RoomId, World},
 };
@@ -298,6 +298,18 @@ impl ServerActor {
             return Err("choose a name before speaking".into());
         };
 
+        let event = SayEvent {
+            player_name: sender_name.clone(),
+            room,
+            message: message.to_owned(),
+        };
+
+        let mut context = HookContext::new();
+
+        self.hooks.before_say(&event, &mut context)?;
+
+        self.apply_hook_effects(sender_id, context.into_effects());
+
         self.send_text(sender_id, format!("You say: {message}\r\n"));
 
         self.send_room(
@@ -305,6 +317,12 @@ impl ServerActor {
             Some(sender_id),
             format!("{sender_name} says: {message}\r\n"),
         );
+
+        let mut context = HookContext::new();
+
+        self.hooks.after_say(&event, &mut context);
+
+        self.apply_hook_effects(sender_id, context.into_effects());
 
         Ok(())
     }
@@ -442,7 +460,11 @@ impl ServerActor {
             direction,
         };
 
-        self.hooks.before_move(&event)?;
+        let mut context = HookContext::new();
+
+        self.hooks.before_move(&event, &mut context)?;
+
+        self.apply_hook_effects(session_id, context.into_effects());
 
         self.send_room(
             current,
@@ -458,7 +480,11 @@ impl ServerActor {
 
         player.move_to(destination);
 
-        self.hooks.after_move(&event);
+        let mut context = HookContext::new();
+
+        self.hooks.after_move(&event, &mut context);
+
+        self.apply_hook_effects(session_id, context.into_effects());
 
         self.send_room(
             destination,
@@ -695,6 +721,19 @@ impl ServerActor {
         );
 
         Ok(())
+    }
+
+    fn apply_hook_effects(&mut self, actor_id: SessionId, effects: Vec<HookEffect>) {
+        for effect in effects {
+            match effect {
+                HookEffect::Reply(text) => {
+                    self.send_text(actor_id, text);
+                }
+                HookEffect::Broadcast { room, text } => {
+                    self.send_room(room, None, text);
+                }
+            }
+        }
     }
 }
 
@@ -1307,7 +1346,7 @@ mod tests {
     struct ClosedGate;
 
     impl crate::Hook for ClosedGate {
-        fn before_move(&self, _event: &MoveEvent) -> GameResult {
+        fn before_move(&self, _event: &MoveEvent, _context: &mut HookContext) -> GameResult {
             Err("the gate is closed".into())
         }
     }
