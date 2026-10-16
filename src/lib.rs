@@ -1,5 +1,6 @@
 pub mod command;
 pub mod commands;
+pub mod error;
 pub mod hooks;
 pub mod item;
 pub mod player;
