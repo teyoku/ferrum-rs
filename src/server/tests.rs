@@ -2,144 +2,145 @@ use crate::hooks::Hook;
 
 use super::*;
 
+struct TestClient {
+    server: ServerHandle,
+    session_id: SessionId,
+    events: mpsc::Receiver<SessionEvent>,
+}
+
+impl TestClient {
+    async fn connect(server: &ServerHandle, port: u16) -> Self {
+        let (output, events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+
+        let address = format!("127.0.0.1:{port}").parse().unwrap();
+
+        let session_id = server.connect(address, output).await.unwrap();
+
+        Self {
+            server: server.clone(),
+            session_id,
+            events,
+        }
+    }
+
+    async fn input(&self, line: impl Into<String>) {
+        self.server
+            .input(self.session_id, line.into())
+            .await
+            .unwrap();
+    }
+
+    async fn disconnect(&self) {
+        self.server.disconnect(self.session_id).await.unwrap();
+    }
+
+    async fn next_text(&mut self) -> String {
+        let event = tokio::time::timeout(std::time::Duration::from_secs(5), self.events.recv())
+            .await
+            .expect("timed out waiting for a session event");
+
+        match event {
+            Some(SessionEvent::Text(text)) => text,
+
+            Some(SessionEvent::Close) => {
+                panic!("expected text, received close event")
+            }
+
+            None => {
+                panic!("session event channel was closed")
+            }
+        }
+    }
+
+    async fn expect_text(&mut self, expected: &str) {
+        assert_eq!(self.next_text().await, expected);
+    }
+
+    async fn login(&mut self, name: &str) -> String {
+        self.input(format!("name {name}")).await;
+
+        self.expect_text(&format!("You are now known as {name}.\r\n"))
+            .await;
+
+        let room_description = self.next_text().await;
+
+        assert!(
+            room_description.contains("Players here:"),
+            "expected room description, got: \
+             {room_description:?}"
+        );
+
+        room_description
+    }
+}
+
 #[tokio::test]
 async fn reports_connected_session_count() {
     let server = ServerActor::spawn();
+    let mut client = TestClient::connect(&server, 4000).await;
 
-    let (output, mut events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+    client.input("name Alex").await;
 
-    let address = "127.0.0.1:4000".parse().unwrap();
+    let _ = client.events.recv().await;
+    let _ = client.events.recv().await;
 
-    let session_id = server.connect(address, output).await.unwrap();
+    let _ = TestClient::connect(&server, 4001).await;
 
-    server
-        .input(session_id, "name Alex".to_owned())
-        .await
-        .unwrap();
+    client.input("who").await;
 
-    let _ = events.recv().await;
-    let _ = events.recv().await;
-
-    let (anonymous_output, _anonymous_events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
-
-    let anonymous_address = "127.0.0.1:4001".parse().unwrap();
-
-    server
-        .connect(anonymous_address, anonymous_output)
-        .await
-        .unwrap();
-
-    server.input(session_id, "who".to_owned()).await.unwrap();
-    assert!(matches!(
-        events.recv().await,
-        Some(SessionEvent::Text(text))
-            if text == "Players online: (1)\r\nAlex\r\n"
-    ));
+    client.expect_text("Players online: (1)\r\nAlex\r\n").await;
 }
 
 #[tokio::test]
 async fn quit_closes_the_session() {
     let server = ServerActor::spawn();
+    let mut client = TestClient::connect(&server, 4000).await;
 
-    let (output, mut events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+    client.input("quit").await;
 
-    let address = "127.0.0.1:4000".parse().unwrap();
-
-    let session_id = server.connect(address, output).await.unwrap();
-
-    server.input(session_id, "quit".to_owned()).await.unwrap();
-
-    assert!(matches!(events.recv().await, Some(SessionEvent::Close)));
+    assert!(matches!(
+        client.events.recv().await,
+        Some(SessionEvent::Close)
+    ));
 }
 
 #[tokio::test]
 async fn game_commands_require_a_player_name() {
     let server = ServerActor::spawn();
+    let mut client = TestClient::connect(&server, 4000).await;
 
-    let (output, mut events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
-
-    let address = "127.0.0.1:4000".parse().unwrap();
-
-    let session_id = server.connect(address, output).await.unwrap();
-
-    server.input(session_id, "look".to_owned()).await.unwrap();
-
-    assert!(matches!(
-        events.recv().await,
-        Some(SessionEvent::Text(text))
-            if text == "Choose a name first: name <player>.\r\n"
-    ));
+    client.input("look").await;
+    client
+        .expect_text("Choose a name first: name <player>.\r\n")
+        .await;
 }
 
 #[tokio::test]
 async fn player_can_move_between_rooms() {
     let server = ServerActor::spawn();
+    let mut alex = TestClient::connect(&server, 4000).await;
+    let mut blair = TestClient::connect(&server, 4001).await;
 
-    let (alex_output, mut alex_events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+    alex.login("Alex").await;
+    blair.login("Blair").await;
+    alex.expect_text("Blair enters the game.\r\n").await;
 
-    let alex_address = "127.0.0.1:4000".parse().unwrap();
+    alex.input("n").await;
+    blair.expect_text("Alex leaves north.\r\n").await;
+    assert!(alex.next_text().await.contains("Rusty Tankard"));
 
-    let alex_id = server.connect(alex_address, alex_output).await.unwrap();
-
-    let (blair_output, mut blair_events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
-
-    let blair_address = "127.0.0.1:4001".parse().unwrap();
-
-    let blair_id = server.connect(blair_address, blair_output).await.unwrap();
-
-    server.input(alex_id, "name Alex".to_owned()).await.unwrap();
-
-    let _ = alex_events.recv().await;
-    let _ = alex_events.recv().await;
-
-    server
-        .input(blair_id, "name Blair".to_owned())
-        .await
-        .unwrap();
-
-    let _ = blair_events.recv().await;
-    let _ = blair_events.recv().await;
-    let _ = alex_events.recv().await;
-
-    server.input(alex_id, "n".to_owned()).await.unwrap();
-
-    assert!(matches!(blair_events.recv().await,
-            Some(SessionEvent::Text(text)) if text == "Alex leaves north.\r\n"));
-
-    assert!(matches!(alex_events.recv().await,
-        Some(SessionEvent::Text(text))
-            if text.contains("Rusty Tankard")));
-
-    server.input(blair_id, "north".to_owned()).await.unwrap();
-
-    assert!(matches!(
-        alex_events.recv().await,
-        Some(SessionEvent::Text(text))
-            if text == "Blair arrives from south.\r\n"
-    ));
-
-    assert!(matches!(
-        blair_events.recv().await,
-        Some(SessionEvent::Text(text))
-            if text.contains("Rusty Tankard")
-    ));
+    blair.input("north").await;
+    alex.expect_text("Blair arrives from south.\r\n").await;
+    assert!(blair.next_text().await.contains("Rusty Tankard"));
 }
 
 #[tokio::test]
 async fn help_only_lists_commands_available_before_login() {
     let server = ServerActor::spawn();
+    let mut client = TestClient::connect(&server, 4000).await;
 
-    let (output, mut events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
-
-    let address = "127.0.0.1:4000".parse().unwrap();
-
-    let session_id = server.connect(address, output).await.unwrap();
-
-    server.input(session_id, "help".to_owned()).await.unwrap();
-
-    let Some(SessionEvent::Text(text)) = events.recv().await else {
-        panic!("expected help text");
-    };
+    client.input("help").await;
+    let text = client.next_text().await;
 
     assert!(text.contains("help"));
     assert!(text.contains("name <player>"));
@@ -152,26 +153,11 @@ async fn help_only_lists_commands_available_before_login() {
 #[tokio::test]
 async fn help_lists_game_commands_after_login() {
     let server = ServerActor::spawn();
+    let mut client = TestClient::connect(&server, 4000).await;
 
-    let (output, mut events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
-
-    let address = "127.0.0.1:4000".parse().unwrap();
-
-    let session_id = server.connect(address, output).await.unwrap();
-
-    server
-        .input(session_id, "name Alex".to_owned())
-        .await
-        .unwrap();
-
-    let _ = events.recv().await;
-    let _ = events.recv().await;
-
-    server.input(session_id, "help".to_owned()).await.unwrap();
-
-    let Some(SessionEvent::Text(text)) = events.recv().await else {
-        panic!("expected help text");
-    };
+    client.login("Alex").await;
+    client.input("help").await;
+    let text = client.next_text().await;
 
     assert!(text.contains("go <direction>"));
     assert!(text.contains("look"));
@@ -182,61 +168,20 @@ async fn help_lists_game_commands_after_login() {
 #[tokio::test]
 async fn announces_player_presence_changes() {
     let server = ServerActor::spawn();
+    let mut alex = TestClient::connect(&server, 4000).await;
+    let mut blair = TestClient::connect(&server, 4001).await;
 
-    let (alex_output, mut alex_events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+    alex.login("Alex").await;
+    blair.login("Blair").await;
+    alex.expect_text("Blair enters the game.\r\n").await;
 
-    let alex_id = server
-        .connect("127.0.0.1:4000".parse().unwrap(), alex_output)
-        .await
-        .unwrap();
+    blair.input("name Casey").await;
+    alex.expect_text("Blair is now known as Casey.\r\n").await;
+    blair.expect_text("You are now known as Casey.\r\n").await;
+    let _ = blair.next_text().await;
 
-    let (blair_output, mut blair_events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
-
-    let blair_id = server
-        .connect("127.0.0.1:4001".parse().unwrap(), blair_output)
-        .await
-        .unwrap();
-
-    server.input(alex_id, "name Alex".to_owned()).await.unwrap();
-
-    let _ = alex_events.recv().await;
-    let _ = alex_events.recv().await;
-
-    server
-        .input(blair_id, "name Blair".to_owned())
-        .await
-        .unwrap();
-
-    assert!(matches!(
-        alex_events.recv().await,
-        Some(SessionEvent::Text(text))
-            if text == "Blair enters the game.\r\n"
-    ));
-
-    let _ = blair_events.recv().await;
-    let _ = blair_events.recv().await;
-
-    server
-        .input(blair_id, "name Casey".to_owned())
-        .await
-        .unwrap();
-
-    assert!(matches!(
-        alex_events.recv().await,
-        Some(SessionEvent::Text(text))
-            if text == "Blair is now known as Casey.\r\n"
-    ));
-
-    let _ = blair_events.recv().await;
-    let _ = blair_events.recv().await;
-
-    server.disconnect(blair_id).await.unwrap();
-
-    assert!(matches!(
-        alex_events.recv().await,
-        Some(SessionEvent::Text(text))
-            if text == "Casey has left the game.\r\n"
-    ));
+    blair.disconnect().await;
+    alex.expect_text("Casey has left the game.\r\n").await;
 }
 
 #[tokio::test]
@@ -251,81 +196,21 @@ async fn player_can_pick_up_and_drop_an_item() {
         .unwrap();
 
     let server = ServerActor::spawn_with_world(world);
+    let mut client = TestClient::connect(&server, 4000).await;
 
-    let (output, mut events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+    let room_description = client.login("Alex").await;
+    assert!(room_description.contains("Items here: hammer"));
 
-    let session_id = server
-        .connect("127.0.0.1:4000".parse().unwrap(), output)
-        .await
-        .unwrap();
-
-    server
-        .input(session_id, "name Alex".to_owned())
-        .await
-        .unwrap();
-
-    let _ = events.recv().await;
-
-    assert!(matches!(
-        events.recv().await,
-        Some(SessionEvent::Text(text))
-            if text.contains("Items here: hammer")
-    ));
-
-    server
-        .input(session_id, "examine hammer".to_owned())
-        .await
-        .unwrap();
-
-    assert!(matches!(
-        events.recv().await,
-        Some(SessionEvent::Text(text))
-            if text == "A sturdy iron hammer.\r\n"
-    ));
-
-    server
-        .input(session_id, "get hammer".to_owned())
-        .await
-        .unwrap();
-
-    assert!(matches!(
-        events.recv().await,
-        Some(SessionEvent::Text(text))
-            if text == "You pick up hammer.\r\n"
-    ));
-
-    server
-        .input(session_id, "x hammer".to_owned())
-        .await
-        .unwrap();
-
-    assert!(matches!(
-        events.recv().await,
-        Some(SessionEvent::Text(text))
-            if text == "A sturdy iron hammer.\r\n"
-    ));
-
-    server
-        .input(session_id, "inventory".to_owned())
-        .await
-        .unwrap();
-
-    assert!(matches!(
-        events.recv().await,
-        Some(SessionEvent::Text(text))
-            if text == "You are carrying: hammer.\r\n"
-    ));
-
-    server
-        .input(session_id, "drop hammer".to_owned())
-        .await
-        .unwrap();
-
-    assert!(matches!(
-        events.recv().await,
-        Some(SessionEvent::Text(text))
-            if text == "You drop hammer.\r\n"
-    ));
+    client.input("examine hammer").await;
+    client.expect_text("A sturdy iron hammer.\r\n").await;
+    client.input("get hammer").await;
+    client.expect_text("You pick up hammer.\r\n").await;
+    client.input("x hammer").await;
+    client.expect_text("A sturdy iron hammer.\r\n").await;
+    client.input("inventory").await;
+    client.expect_text("You are carrying: hammer.\r\n").await;
+    client.input("drop hammer").await;
+    client.expect_text("You drop hammer.\r\n").await;
 }
 
 #[tokio::test]
@@ -340,73 +225,23 @@ async fn player_can_give_an_item_to_another_player() {
         .unwrap();
 
     let server = ServerActor::spawn_with_world(world);
+    let mut alex = TestClient::connect(&server, 4000).await;
+    let mut blair = TestClient::connect(&server, 4001).await;
 
-    let (alex_output, mut alex_events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+    alex.login("Alex").await;
+    blair.login("Blair").await;
+    alex.expect_text("Blair enters the game.\r\n").await;
 
-    let alex_id = server
-        .connect("127.0.0.1:4000".parse().unwrap(), alex_output)
-        .await
-        .unwrap();
-
-    let (blair_output, mut blair_events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
-
-    let blair_id = server
-        .connect("127.0.0.1:4001".parse().unwrap(), blair_output)
-        .await
-        .unwrap();
-
-    server.input(alex_id, "name Alex".to_owned()).await.unwrap();
-
-    let _ = alex_events.recv().await;
-    let _ = alex_events.recv().await;
-
-    server
-        .input(blair_id, "name Blair".to_owned())
-        .await
-        .unwrap();
-
-    let _ = blair_events.recv().await;
-    let _ = blair_events.recv().await;
-    let _ = alex_events.recv().await;
-
-    server
-        .input(alex_id, "get iron hammer".to_owned())
-        .await
-        .unwrap();
-
-    let _ = alex_events.recv().await;
-    let _ = blair_events.recv().await;
-
-    server
-        .input(alex_id, "give iron hammer Blair".to_owned())
-        .await
-        .unwrap();
-
-    assert!(matches!(
-        alex_events.recv().await,
-        Some(SessionEvent::Text(text))
-            if text
-                == "You give iron hammer to Blair.\r\n"
-    ));
-
-    assert!(matches!(
-        blair_events.recv().await,
-        Some(SessionEvent::Text(text))
-            if text
-                == "Alex gives you iron hammer.\r\n"
-    ));
-
-    server
-        .input(blair_id, "inventory".to_owned())
-        .await
-        .unwrap();
-
-    assert!(matches!(
-        blair_events.recv().await,
-        Some(SessionEvent::Text(text))
-            if text
-                == "You are carrying: iron hammer.\r\n"
-    ));
+    alex.input("get iron hammer").await;
+    alex.expect_text("You pick up iron hammer.\r\n").await;
+    blair.expect_text("Alex picks up iron hammer.\r\n").await;
+    alex.input("give iron hammer Blair").await;
+    alex.expect_text("You give iron hammer to Blair.\r\n").await;
+    blair.expect_text("Alex gives you iron hammer.\r\n").await;
+    blair.input("inventory").await;
+    blair
+        .expect_text("You are carrying: iron hammer.\r\n")
+        .await;
 }
 
 #[tokio::test]
@@ -421,48 +256,16 @@ async fn renaming_a_player_preserves_their_inventory() {
         .unwrap();
 
     let server = ServerActor::spawn_with_world(world);
+    let mut client = TestClient::connect(&server, 4000).await;
 
-    let (output, mut events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
-
-    let session_id = server
-        .connect("127.0.0.1:4000".parse().unwrap(), output)
-        .await
-        .unwrap();
-
-    server
-        .input(session_id, "name Alex".to_owned())
-        .await
-        .unwrap();
-
-    let _ = events.recv().await;
-    let _ = events.recv().await;
-
-    server
-        .input(session_id, "get hammer".to_owned())
-        .await
-        .unwrap();
-
-    let _ = events.recv().await;
-
-    server
-        .input(session_id, "name Alicia".to_owned())
-        .await
-        .unwrap();
-
-    let _ = events.recv().await;
-    let _ = events.recv().await;
-
-    server
-        .input(session_id, "inventory".to_owned())
-        .await
-        .unwrap();
-
-    assert!(matches!(
-        events.recv().await,
-        Some(SessionEvent::Text(text))
-            if text
-                == "You are carrying: hammer.\r\n"
-    ));
+    client.login("Alex").await;
+    client.input("get hammer").await;
+    client.expect_text("You pick up hammer.\r\n").await;
+    client.input("name Alicia").await;
+    client.expect_text("You are now known as Alicia.\r\n").await;
+    let _ = client.next_text().await;
+    client.input("inventory").await;
+    client.expect_text("You are carrying: hammer.\r\n").await;
 }
 
 #[tokio::test]
@@ -477,81 +280,29 @@ async fn disconnecting_player_drops_their_inventory() {
         .unwrap();
 
     let server = ServerActor::spawn_with_world(world);
+    let mut alex = TestClient::connect(&server, 4000).await;
 
-    let (alex_output, mut alex_events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+    alex.login("Alex").await;
+    alex.input("get hammer").await;
+    alex.expect_text("You pick up hammer.\r\n").await;
+    alex.disconnect().await;
 
-    let alex_id = server
-        .connect("127.0.0.1:4000".parse().unwrap(), alex_output)
-        .await
-        .unwrap();
-
-    server.input(alex_id, "name Alex".to_owned()).await.unwrap();
-
-    let _ = alex_events.recv().await;
-    let _ = alex_events.recv().await;
-
-    server
-        .input(alex_id, "get hammer".to_owned())
-        .await
-        .unwrap();
-
-    let _ = alex_events.recv().await;
-
-    server.disconnect(alex_id).await.unwrap();
-
-    let (blair_output, mut blair_events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
-
-    let blair_id = server
-        .connect("127.0.0.1:4001".parse().unwrap(), blair_output)
-        .await
-        .unwrap();
-
-    server
-        .input(blair_id, "name Blair".to_owned())
-        .await
-        .unwrap();
-
-    let _ = blair_events.recv().await;
-
-    assert!(matches!(
-        blair_events.recv().await,
-        Some(SessionEvent::Text(text))
-            if text.contains("Items here: hammer")
-    ));
+    let mut blair = TestClient::connect(&server, 4001).await;
+    let room_description = blair.login("Blair").await;
+    assert!(room_description.contains("Items here: hammer"));
 }
 
 #[tokio::test]
 async fn help_describes_a_command_by_its_alias() {
     let server = ServerActor::spawn();
+    let mut client = TestClient::connect(&server, 4000).await;
 
-    let (output, mut events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
-
-    let session_id = server
-        .connect("127.0.0.1:4000".parse().unwrap(), output)
-        .await
-        .unwrap();
-
-    server
-        .input(session_id, "help look".to_owned())
-        .await
-        .unwrap();
-
-    assert!(matches!(
-        events.recv().await,
-        Some(SessionEvent::Text(text))
-            if text
-                == "No help available for 'look'.\r\n"
-    ));
-
-    server
-        .input(session_id, "name Alex".to_owned())
-        .await
-        .unwrap();
-
-    let _ = events.recv().await;
-    let _ = events.recv().await;
-
-    server.input(session_id, "help x".to_owned()).await.unwrap();
+    client.input("help look").await;
+    client
+        .expect_text("No help available for 'look'.\r\n")
+        .await;
+    client.login("Alex").await;
+    client.input("help x").await;
 
     let expected = concat!(
         "Command: examine\r\n",
@@ -561,11 +312,7 @@ async fn help_describes_a_command_by_its_alias() {
         "in your inventory.\r\n",
     );
 
-    assert!(matches!(
-        events.recv().await,
-        Some(SessionEvent::Text(text))
-            if text == expected
-    ));
+    client.expect_text(expected).await;
 }
 
 #[derive(Debug)]
@@ -590,37 +337,15 @@ async fn movement_hook_can_keep_a_player_in_the_current_room() {
     hooks.register(ClosedGate);
 
     let server = ServerActor::spawn_with_registry_hooks_and_world(commands, hooks, World::demo());
+    let mut client = TestClient::connect(&server, 4000).await;
 
-    let (output, mut events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
-
-    let session_id = server
-        .connect("127.0.0.1:4000".parse().unwrap(), output)
-        .await
-        .unwrap();
-
-    server
-        .input(session_id, "name Alex".to_owned())
-        .await
-        .unwrap();
-
-    let _ = events.recv().await;
-    let _ = events.recv().await;
-
-    server.input(session_id, "north".to_owned()).await.unwrap();
-
-    assert!(matches!(
-        events.recv().await,
-        Some(SessionEvent::Text(text))
-            if text == "Command error: the gate is closed\r\n"
-    ));
-
-    server.input(session_id, "look".to_owned()).await.unwrap();
-
-    assert!(matches!(
-        events.recv().await,
-        Some(SessionEvent::Text(text))
-            if text.contains("Town Square")
-    ));
+    client.login("Alex").await;
+    client.input("north").await;
+    client
+        .expect_text("Command error: the gate is closed\r\n")
+        .await;
+    client.input("look").await;
+    assert!(client.next_text().await.contains("Town Square"));
 }
 
 #[derive(Debug)]
@@ -648,36 +373,10 @@ async fn speech_hook_can_add_a_room_message() {
     hooks.register(EchoSpeech);
 
     let server = ServerActor::spawn_with_registry_hooks_and_world(commands, hooks, World::demo());
+    let mut client = TestClient::connect(&server, 4000).await;
 
-    let (output, mut events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
-
-    let session_id = server
-        .connect("127.0.0.1:4000".parse().unwrap(), output)
-        .await
-        .unwrap();
-
-    server
-        .input(session_id, "name Alex".to_owned())
-        .await
-        .unwrap();
-
-    let _ = events.recv().await;
-    let _ = events.recv().await;
-
-    server
-        .input(session_id, "say hello".to_owned())
-        .await
-        .unwrap();
-
-    assert!(matches!(
-        events.recv().await,
-        Some(SessionEvent::Text(text))
-            if text == "You say: hello\r\n"
-    ));
-
-    assert!(matches!(
-        events.recv().await,
-        Some(SessionEvent::Text(text))
-            if text == "An echo repeats: hello\r\n"
-    ));
+    client.login("Alex").await;
+    client.input("say hello").await;
+    client.expect_text("You say: hello\r\n").await;
+    client.expect_text("An echo repeats: hello\r\n").await;
 }
