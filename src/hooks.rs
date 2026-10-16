@@ -44,7 +44,7 @@ impl HookRegistry {
 
     pub(crate) fn after_move(&self, event: &MoveEvent) {
         for hook in &self.hooks {
-            self.after_move(event);
+            hook.after_move(event);
         }
     }
 }
