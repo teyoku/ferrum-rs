@@ -1,11 +1,12 @@
 use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
 use crate::{
+    error::GameResult,
     player::PlayerNameError,
     server::{ServerActor, SessionId},
 };
 
-pub type CommandResult = Result<(), &'static str>;
+pub type CommandResult = GameResult;
 
 pub trait Command: Debug + Sync + Send {
     fn name(&self) -> &'static str;
