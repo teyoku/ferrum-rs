@@ -36,3 +36,5 @@ impl From<String> for GameError {
         Self::new(message)
     }
 }
+
+pub type GameResult<T = ()> = Result<T, GameError>;
