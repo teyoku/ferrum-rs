@@ -1302,4 +1302,56 @@ mod tests {
                 if text == expected
         ));
     }
+
+    #[derive(Debug)]
+    struct ClosedGate;
+
+    impl crate::Hook for ClosedGate {
+        fn before_move(&self, _event: &MoveEvent) -> GameResult {
+            Err("the gate is closed".into())
+        }
+    }
+
+    #[tokio::test]
+    async fn movement_hook_can_keep_a_player_in_the_current_room() {
+        let mut commands = CommandRegistry::new();
+        register_builtins(&mut commands);
+
+        let mut hooks = HookRegistry::new();
+        hooks.register(ClosedGate);
+
+        let server =
+            ServerActor::spawn_with_registry_hooks_and_world(commands, hooks, World::demo());
+
+        let (output, mut events) = mpsc::channel(SESSION_MAILBOX_CAPACITY);
+
+        let session_id = server
+            .connect("127.0.0.1:4000".parse().unwrap(), output)
+            .await
+            .unwrap();
+
+        server
+            .input(session_id, "name Alex".to_owned())
+            .await
+            .unwrap();
+
+        let _ = events.recv().await;
+        let _ = events.recv().await;
+
+        server.input(session_id, "north".to_owned()).await.unwrap();
+
+        assert!(matches!(
+            events.recv().await,
+            Some(SessionEvent::Text(text))
+                if text == "Command error: the gate is closed\r\n"
+        ));
+
+        server.input(session_id, "look".to_owned()).await.unwrap();
+
+        assert!(matches!(
+            events.recv().await,
+            Some(SessionEvent::Text(text))
+                if text.contains("Town Square")
+        ));
+    }
 }
