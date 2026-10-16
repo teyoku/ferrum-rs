@@ -10,6 +10,16 @@ const MAX_LINE_LENGTH: usize = 4 * 1024;
 
 type BoxError = Box<dyn Error + Send + Sync>;
 
+/// Runs the line-oriented protocol for one connected TCP client.
+///
+/// The session registers itself with `server`, forwards non-empty input lines,
+/// writes actor events to the socket, and always attempts to unregister before
+/// returning. Input lines larger than 4 KiB are rejected by the codec.
+///
+/// # Errors
+///
+/// Returns an error if socket I/O, input decoding, or communication with the
+/// server actor fails.
 pub async fn process_client(stream: TcpStream, server: ServerHandle) -> Result<(), BoxError> {
     let address = stream.peer_addr()?;
     let (reader, mut writer) = stream.into_split();
@@ -20,6 +30,8 @@ pub async fn process_client(stream: TcpStream, server: ServerHandle) -> Result<(
 
     let session_id = server.connect(address, output).await?;
 
+    // Keep cleanup outside the protocol future so every normal I/O failure also
+    // unregisters the session and returns its inventory to the world.
     let result = async {
         writer
             .write_all(

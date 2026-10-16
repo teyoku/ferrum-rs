@@ -2,10 +2,12 @@ use crate::item::{Item, ItemId};
 use core::fmt;
 use std::{collections::HashMap, error::Error};
 
+/// A numeric identifier for a room within one [`World`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RoomId(u64);
 
 impl RoomId {
+    /// Creates an identifier from its numeric representation.
     pub fn new(value: u64) -> Self {
         Self(value)
     }
@@ -17,17 +19,27 @@ impl fmt::Display for RoomId {
     }
 }
 
+/// A direction in which a room exit can lead.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Direction {
+    /// North.
     North,
+    /// South.
     South,
+    /// East.
     East,
+    /// West.
     West,
+    /// Up.
     Up,
+    /// Down.
     Down,
 }
 
 impl Direction {
+    /// Parses a full direction name or its one-letter abbreviation.
+    ///
+    /// Matching ignores surrounding whitespace and ASCII case.
     pub fn parse(input: &str) -> Option<Self> {
         match input.trim().to_lowercase().as_str() {
             "north" | "n" => Some(Direction::North),
@@ -40,6 +52,7 @@ impl Direction {
         }
     }
 
+    /// Returns the lowercase full name of the direction.
     pub fn as_str(self) -> &'static str {
         match self {
             Self::North => "north",
@@ -51,6 +64,7 @@ impl Direction {
         }
     }
 
+    /// Returns the direction that leads back along a two-way exit.
     pub fn opposite(self) -> Self {
         match self {
             Self::North => Self::South,
@@ -63,12 +77,18 @@ impl Direction {
     }
 }
 
+/// An error produced while constructing or modifying a [`World`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WorldError {
+    /// The requested room does not exist.
     RoomNotFound(RoomId),
+    /// No further room identifier could be allocated.
     RoomIdOverflow,
+    /// No further item identifier could be allocated.
     ItemIdOverflow,
+    /// A stable room key was empty after trimming.
     EmptyRoomKey,
+    /// A stable room key was already present in the world.
     DuplicateRoomKey(String),
 }
 
@@ -96,6 +116,11 @@ struct Room {
     items: Vec<Item>,
 }
 
+/// A collection of rooms, exits, and items that make up a game world.
+///
+/// Each room has an internal numeric [`RoomId`] and a stable string key. Stable
+/// keys are suitable for serialized world definitions; numeric IDs are used by
+/// the runtime API.
 #[derive(Debug)]
 pub struct World {
     rooms: HashMap<RoomId, Room>,
@@ -107,11 +132,17 @@ pub struct World {
 }
 
 impl World {
+    /// Creates a world containing one start room with the key `"start"`.
     pub fn new(name: impl Into<String>, description: impl Into<String>) -> Self {
         Self::new_with_key("start", name, description)
             .expect("default start room key must be valid")
     }
 
+    /// Creates a world containing one start room with an explicit stable key.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`WorldError::EmptyRoomKey`] if `key` is empty after trimming.
     pub fn new_with_key(
         key: impl Into<String>,
         name: impl Into<String>,
@@ -166,10 +197,16 @@ impl World {
         world
     }
 
+    /// Returns the room in which new players begin.
     pub fn start_room(&self) -> RoomId {
         self.start_room
     }
 
+    /// Changes the room in which new players begin.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`WorldError::RoomNotFound`] if `room` is not in this world.
     pub fn set_start_room(&mut self, room: RoomId) -> Result<(), WorldError> {
         self.require_room(room)?;
 
@@ -178,14 +215,21 @@ impl World {
         Ok(())
     }
 
+    /// Resolves a stable room key to its runtime identifier.
     pub fn room_id(&self, key: &str) -> Option<RoomId> {
         self.room_ids.get(key.trim()).copied()
     }
 
+    /// Returns the stable key associated with a room identifier.
     pub fn room_key(&self, room: RoomId) -> Option<&str> {
         self.room_keys.get(&room).map(String::as_str)
     }
 
+    /// Adds a room with an automatically generated stable key.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`WorldError::RoomIdOverflow`] if no identifier is available.
     pub fn add_room(
         &mut self,
         name: impl Into<String>,
@@ -196,6 +240,12 @@ impl World {
         self.add_room_with_key(key, name, description)
     }
 
+    /// Adds a room with an explicit stable key.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the key is empty or duplicated, or when no room
+    /// identifier remains available.
     pub fn add_room_with_key(
         &mut self,
         key: impl Into<String>,
@@ -237,6 +287,11 @@ impl World {
         Ok(room_id)
     }
 
+    /// Creates or replaces a one-way exit from one room to another.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`WorldError::RoomNotFound`] if either endpoint is missing.
     pub fn connect(
         &mut self,
         from: RoomId,
@@ -255,6 +310,14 @@ impl World {
         Ok(())
     }
 
+    /// Creates a pair of opposite exits between two rooms.
+    ///
+    /// If `direction` leads from `first` to `second`, its
+    /// [`Direction::opposite`] leads back to `first`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`WorldError::RoomNotFound`] if either endpoint is missing.
     pub fn connect_two_way(
         &mut self,
         first: RoomId,
@@ -279,10 +342,15 @@ impl World {
         Ok(())
     }
 
+    /// Returns the destination reached from `room` in `direction`.
     pub fn destination(&self, room: RoomId, direction: Direction) -> Option<RoomId> {
         self.rooms.get(&room)?.exits.get(&direction).copied()
     }
 
+    /// Builds the player-facing description of a room.
+    ///
+    /// The returned string includes the room name, description, sorted exits,
+    /// and visible item names, all using network CRLF line endings.
     pub fn describe(&self, room: RoomId) -> Option<String> {
         let room = self.rooms.get(&room)?;
 
@@ -323,6 +391,11 @@ impl World {
             .ok_or(WorldError::RoomNotFound(room))
     }
 
+    /// Places an existing item in a room.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`WorldError::RoomNotFound`] if the room is missing.
     pub fn add_item(&mut self, room: RoomId, item: Item) -> Result<(), WorldError> {
         let room = self
             .rooms
@@ -334,6 +407,12 @@ impl World {
         Ok(())
     }
 
+    /// Creates a uniquely identified item and places it in a room.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the room is missing or the item identifier counter
+    /// overflows.
     pub fn create_item(
         &mut self,
         room: RoomId,
@@ -354,6 +433,7 @@ impl World {
         Ok(item_id)
     }
 
+    /// Removes and returns the first item in a room matching `name`.
     pub fn take_item(&mut self, room: RoomId, name: &str) -> Option<Item> {
         let room = self.rooms.get_mut(&room)?;
 
@@ -362,6 +442,7 @@ impl World {
         Some(room.items.remove(index))
     }
 
+    /// Finds the first item in a room matching `name`.
     pub fn find_item(&self, room: RoomId, name: &str) -> Option<&Item> {
         self.rooms
             .get(&room)?
@@ -370,6 +451,7 @@ impl World {
             .find(|item| item.matches_name(name))
     }
 
+    /// Finds an item by its stable identity within a room.
     pub fn find_item_by_id(&self, room: RoomId, item_id: ItemId) -> Option<&Item> {
         self.rooms
             .get(&room)?

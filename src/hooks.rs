@@ -5,22 +5,36 @@ use crate::{
     world::{Direction, RoomId},
 };
 
+/// A game action that hooks can inspect.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GameEvent {
+    /// A player is moving between rooms.
     Move {
+        /// Display name of the moving player.
         player_name: String,
+        /// Room occupied before the move.
         from: RoomId,
+        /// Destination room.
         to: RoomId,
+        /// Direction selected by the player.
         direction: Direction,
     },
 
+    /// A player is speaking in a room.
     Say {
+        /// Display name of the speaking player.
         player_name: String,
+        /// Room in which the message is spoken.
         room: RoomId,
+        /// Message supplied by the player.
         message: String,
     },
 }
 
+/// A message-producing side effect returned by a [`Hook`].
+///
+/// Effects are applied in hook registration order. Text is normalized to end
+/// in a CRLF sequence when the effect is created.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Effect {
     kind: EffectKind,
@@ -34,12 +48,14 @@ pub(crate) enum EffectKind {
 }
 
 impl Effect {
+    /// Creates an effect that replies to the player who triggered the event.
     pub fn reply(text: impl Into<String>) -> Self {
         Self {
             kind: EffectKind::Reply(with_newline(text)),
         }
     }
 
+    /// Creates an effect that broadcasts text to every player in `room`.
     pub fn broadcast(room: RoomId, text: impl Into<String>) -> Self {
         Self {
             kind: EffectKind::Broadcast {
@@ -63,26 +79,35 @@ fn with_newline(text: impl Into<String>) -> String {
 
     text
 }
+/// Observes game events and optionally produces additional effects.
+///
+/// Returning an error from [`Hook::before`] rejects the underlying action.
+/// After hooks cannot reject an action because it has already taken place.
 pub trait Hook: Debug + Send + Sync {
+    /// Runs before an event is committed.
     fn before(&self, _event: &GameEvent) -> GameResult<Vec<Effect>> {
         Ok(Vec::new())
     }
 
+    /// Runs after an event has been committed.
     fn after(&self, _event: &GameEvent) -> Vec<Effect> {
         Vec::new()
     }
 }
 
+/// An ordered collection of event hooks.
 #[derive(Debug, Default)]
 pub struct HookRegistry {
     hooks: Vec<Arc<dyn Hook>>,
 }
 
 impl HookRegistry {
+    /// Creates an empty hook registry.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Appends a hook to the registry.
     pub fn register<H>(&mut self, hook: H)
     where
         H: Hook + 'static,

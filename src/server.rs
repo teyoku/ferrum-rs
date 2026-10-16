@@ -12,9 +12,12 @@ use crate::{
 
 mod actions;
 
+/// Maximum number of commands buffered for the server actor.
 pub const SERVER_MAILBOX_CAPACITY: usize = 256;
+/// Maximum number of outbound events buffered for one client session.
 pub const SESSION_MAILBOX_CAPACITY: usize = 32;
 
+/// Identifies one connection for the lifetime of a server actor.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct SessionId(u64);
 
@@ -24,9 +27,12 @@ impl fmt::Display for SessionId {
     }
 }
 
+/// An outbound event consumed by a client session task.
 #[derive(Debug)]
 pub enum SessionEvent {
+    /// Writes text to the connected client.
     Text(String),
+    /// Requests a clean connection shutdown.
     Close,
 }
 
@@ -45,11 +51,16 @@ enum ServerCommand {
     },
 }
 
+/// A clonable, asynchronous command channel for a running [`ServerActor`].
 #[derive(Debug, Clone)]
 pub struct ServerHandle {
     sender: mpsc::Sender<ServerCommand>,
 }
 
+/// Owns the world and serializes all connected-player state changes.
+///
+/// Create a running actor with one of the `spawn` methods. Callers interact
+/// with it through the returned [`ServerHandle`].
 #[derive(Debug)]
 pub struct ServerActor {
     sessions: HashMap<SessionId, ConnectedSession>,
@@ -60,6 +71,7 @@ pub struct ServerActor {
     world: World,
 }
 
+/// Server-side state associated with one connected client.
 #[derive(Debug)]
 pub struct ConnectedSession {
     address: SocketAddr,
@@ -74,6 +86,7 @@ enum SessionState {
 }
 
 impl ConnectedSession {
+    /// Returns the player name, or the peer address before login.
     pub fn display_name(&self) -> String {
         self.player()
             .map(|player| player.name().to_owned())
@@ -99,6 +112,7 @@ impl ConnectedSession {
     }
 }
 
+/// Indicates that a [`ServerHandle`] can no longer reach its actor task.
 #[derive(Debug, Clone, Copy)]
 pub struct ServerStopped;
 
@@ -111,10 +125,16 @@ impl fmt::Display for ServerStopped {
 impl Error for ServerStopped {}
 
 impl ServerActor {
+    /// Spawns a server actor with the built-in commands and demo world.
+    ///
+    /// This method must be called from within a Tokio runtime.
     pub fn spawn() -> ServerHandle {
         Self::spawn_with_world(World::demo())
     }
 
+    /// Spawns a server actor with the built-in commands and the supplied world.
+    ///
+    /// This method must be called from within a Tokio runtime.
     pub fn spawn_with_world(world: World) -> ServerHandle {
         let mut commands = CommandRegistry::new();
 
@@ -123,14 +143,24 @@ impl ServerActor {
         Self::spawn_with_registry_and_world(commands, world)
     }
 
+    /// Spawns a server actor with a custom command registry and demo world.
+    ///
+    /// This method must be called from within a Tokio runtime.
     pub fn spawn_with_registry(commands: CommandRegistry) -> ServerHandle {
         Self::spawn_with_registry_and_world(commands, World::demo())
     }
 
+    /// Spawns a server actor with custom commands and world, but no hooks.
+    ///
+    /// This method must be called from within a Tokio runtime.
     pub fn spawn_with_registry_and_world(commands: CommandRegistry, world: World) -> ServerHandle {
         Self::spawn_with_registry_hooks_and_world(commands, HookRegistry::new(), world)
     }
 
+    /// Spawns a fully configured server actor.
+    ///
+    /// This method must be called from within a Tokio runtime. The returned
+    /// handle keeps the actor's command channel alive.
     pub fn spawn_with_registry_hooks_and_world(
         commands: CommandRegistry,
         hooks: HookRegistry,
@@ -243,6 +273,8 @@ impl ServerActor {
         if let Some((player_name, room, inventory)) = departing_player {
             let dropped_items = !inventory.is_empty();
 
+            // A disconnect must not destroy owned items; return them to the
+            // last valid room before announcing the departure.
             for item in inventory {
                 self.world
                     .add_item(room, item)
@@ -263,6 +295,8 @@ impl ServerActor {
     }
 
     fn send_to(&mut self, session_id: SessionId, event: SessionEvent) {
+        // A full or closed session mailbox means the network task is no longer
+        // keeping up. Removing it also performs the normal disconnect cleanup.
         let should_remove = self
             .sessions
             .get(&session_id)
@@ -299,6 +333,13 @@ impl ServerActor {
 }
 
 impl ServerHandle {
+    /// Registers a newly accepted connection with the actor.
+    ///
+    /// The `output` channel receives text and close events for the connection.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ServerStopped`] when the actor task is no longer running.
     pub async fn connect(
         &self,
         address: SocketAddr,
@@ -318,6 +359,11 @@ impl ServerHandle {
         response.await.map_err(|_| ServerStopped)
     }
 
+    /// Submits one complete input line for a session.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ServerStopped`] when the actor task is no longer running.
     pub async fn input(&self, session_id: SessionId, line: String) -> Result<(), ServerStopped> {
         self.sender
             .send(ServerCommand::Input { session_id, line })
@@ -325,6 +371,11 @@ impl ServerHandle {
             .map_err(|_| ServerStopped)
     }
 
+    /// Notifies the actor that a session has disconnected.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ServerStopped`] when the actor task is no longer running.
     pub async fn disconnect(&self, session_id: SessionId) -> Result<(), ServerStopped> {
         self.sender
             .send(ServerCommand::Disconnect { session_id })

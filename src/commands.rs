@@ -1,5 +1,6 @@
 use crate::command::{Command, CommandContext, CommandRegistry, CommandResult};
 
+/// Registers every built-in FerrumMUD command and its aliases.
 pub fn register_builtins(registry: &mut CommandRegistry) {
     registry.register(NameCommand);
     registry.register(WhoCommand);
@@ -15,6 +16,7 @@ pub fn register_builtins(registry: &mut CommandRegistry) {
     registry.register(QuitCommand);
 }
 
+/// Chooses or changes the invoking player's name.
 #[derive(Debug)]
 pub struct NameCommand;
 
@@ -52,6 +54,7 @@ impl Command for NameCommand {
     }
 }
 
+/// Lists all players who have chosen a name.
 #[derive(Debug)]
 pub struct WhoCommand;
 
@@ -75,6 +78,7 @@ impl Command for WhoCommand {
     }
 }
 
+/// Sends a message to every player in the invoking player's room.
 #[derive(Debug)]
 pub struct SayCommand;
 
@@ -108,6 +112,7 @@ impl Command for SayCommand {
     }
 }
 
+/// Describes the invoking player's current room.
 #[derive(Debug)]
 pub struct LookCommand;
 
@@ -129,6 +134,7 @@ impl Command for LookCommand {
     }
 }
 
+/// Moves the invoking player through a directional exit.
 #[derive(Debug)]
 pub struct GoCommand;
 
@@ -167,6 +173,7 @@ impl Command for GoCommand {
     }
 }
 
+/// Displays general or command-specific help.
 #[derive(Debug)]
 pub struct HelpCommand;
 
@@ -201,6 +208,7 @@ impl Command for HelpCommand {
     }
 }
 
+/// Picks up an item from the invoking player's room.
 #[derive(Debug)]
 pub struct GetCommand;
 
@@ -233,6 +241,7 @@ impl Command for GetCommand {
     }
 }
 
+/// Drops a carried item into the invoking player's room.
 #[derive(Debug)]
 pub struct DropCommand;
 
@@ -261,6 +270,7 @@ impl Command for DropCommand {
     }
 }
 
+/// Lists the invoking player's carried items.
 #[derive(Debug)]
 pub struct InventoryCommand;
 
@@ -282,6 +292,7 @@ impl Command for InventoryCommand {
     }
 }
 
+/// Describes a nearby or carried item.
 #[derive(Debug)]
 pub struct ExamineCommand;
 
@@ -314,6 +325,7 @@ impl Command for ExamineCommand {
     }
 }
 
+/// Transfers a carried item to another player in the same room.
 #[derive(Debug)]
 pub struct GiveCommand;
 
@@ -346,6 +358,7 @@ impl Command for GiveCommand {
     }
 }
 
+/// Requests a clean disconnect for the invoking session.
 #[derive(Debug)]
 pub struct QuitCommand;
 

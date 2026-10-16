@@ -2,9 +2,12 @@ use std::{error::Error, fmt};
 
 use crate::{item::Item, world::RoomId};
 
+/// Minimum number of Unicode characters permitted in a player name.
 pub const MIN_NAME_LENGTH: usize = 3;
+/// Maximum number of Unicode characters permitted in a player name.
 pub const MAX_NAME_LENGTH: usize = 16;
 
+/// A named player, their current room, and carried items.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Player {
     name: String,
@@ -13,6 +16,11 @@ pub struct Player {
 }
 
 impl Player {
+    /// Creates a player in `room` after validating `name`.
+    ///
+    /// Names are trimmed, must contain between [`MIN_NAME_LENGTH`] and
+    /// [`MAX_NAME_LENGTH`] Unicode characters, and may contain alphabetic
+    /// characters only. Uniqueness is enforced by the server, not this type.
     pub fn new(name: &str, room: RoomId) -> Result<Self, PlayerNameError> {
         let name = Self::validate_name(name)?;
 
@@ -23,18 +31,22 @@ impl Player {
         })
     }
 
+    /// Returns the player's display name.
     pub fn name(&self) -> &str {
         &self.name
     }
 
+    /// Returns the room currently occupied by the player.
     pub fn room(&self) -> RoomId {
         self.room
     }
 
+    /// Returns all items carried by the player.
     pub fn inventory(&self) -> &[Item] {
         &self.inventory
     }
 
+    /// Consumes the player and returns all carried items.
     pub fn into_inventory(self) -> Vec<Item> {
         self.inventory
     }
@@ -62,6 +74,7 @@ impl Player {
         Some(self.inventory.remove(index))
     }
 
+    /// Finds a carried item by its case-insensitive name.
     pub fn find_item(&self, name: &str) -> Option<&Item> {
         self.inventory.iter().find(|item| item.matches_name(name))
     }
@@ -86,12 +99,18 @@ impl Player {
     }
 }
 
+/// A reason why a player name could not be accepted.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlayerNameError {
+    /// The name contains fewer than [`MIN_NAME_LENGTH`] characters.
     TooShort,
+    /// The name contains more than [`MAX_NAME_LENGTH`] characters.
     TooLong,
+    /// The name contains a non-alphabetic character.
     InvalidCharacters,
+    /// Another connected player already uses the name.
     AlreadyInUse,
+    /// The session disappeared before the name could be assigned.
     SessionNotFound,
 }
 

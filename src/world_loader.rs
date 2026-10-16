@@ -49,15 +49,24 @@ struct ExitDefinition {
     bidirectional: bool,
 }
 
+/// An error encountered while reading, parsing, or validating a world file.
 #[derive(Debug)]
 pub enum WorldLoadError {
+    /// The world file could not be read.
     Io(io::Error),
+    /// The file did not contain valid JSON matching the world schema.
     Json(serde_json::Error),
+    /// The world contained no rooms.
     EmptyWorld,
+    /// Two room definitions used the same stable key.
     DuplicateRoomKey(String),
+    /// The `start` value did not identify a defined room.
     StartRoomNotFound(String),
+    /// An exit referenced a room key that was not defined.
     RoomKeyNotFound(String),
+    /// An exit used an unsupported direction.
     InvalidDirection(String),
+    /// The in-memory world could not be constructed.
     World(WorldError),
 }
 
@@ -124,12 +133,24 @@ impl From<WorldError> for WorldLoadError {
     }
 }
 
+/// Loads a world from a UTF-8 JSON file.
+///
+/// # Errors
+///
+/// Returns [`WorldLoadError`] if the file cannot be read, does not match the
+/// expected schema, or contains invalid world relationships.
 pub fn load_world(path: impl AsRef<Path>) -> Result<World, WorldLoadError> {
     let json = fs::read_to_string(path)?;
 
     parse_world(&json)
 }
 
+/// Parses and validates a world from a JSON string.
+///
+/// # Errors
+///
+/// Returns [`WorldLoadError`] if the JSON is malformed, does not match the
+/// expected schema, or contains invalid world relationships.
 pub fn parse_world(json: &str) -> Result<World, WorldLoadError> {
     let definition = serde_json::from_str(json)?;
 
@@ -153,6 +174,8 @@ fn build_world(definition: WorldDefinition) -> Result<World, WorldLoadError> {
 
     let mut room_ids = HashMap::from([(start.key.as_str(), world.start_room())]);
 
+    // Allocate every room before resolving exits so definitions may refer to a
+    // room that appears later in the JSON document.
     for room in &definition.rooms {
         if room.key == start.key {
             continue;

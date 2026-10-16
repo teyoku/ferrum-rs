@@ -1,17 +1,22 @@
 use std::{borrow::Cow, error::Error, fmt};
 
+/// An error produced while executing game logic.
+///
+/// The message is suitable for display to a connected player.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameError {
     message: Cow<'static, str>,
 }
 
 impl GameError {
+    /// Creates an error from a static or owned message.
     pub fn new(message: impl Into<Cow<'static, str>>) -> Self {
         Self {
             message: message.into(),
         }
     }
 
+    /// Returns the player-facing error message.
     pub fn message(&self) -> &str {
         &self.message
     }
@@ -37,6 +42,7 @@ impl From<String> for GameError {
     }
 }
 
+/// The standard result type used by commands and hooks.
 pub type GameResult<T = ()> = Result<T, GameError>;
 
 #[cfg(test)]
