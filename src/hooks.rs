@@ -2,6 +2,7 @@ use std::{fmt::Debug, sync::Arc};
 
 use crate::world::{Direction, RoomId};
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MoveEvent {
     pub player_name: String,
     pub from: RoomId,
