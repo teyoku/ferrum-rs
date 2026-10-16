@@ -26,6 +26,42 @@ pub(crate) enum HookEffect {
     Broadcast { room: RoomId, text: String },
 }
 
+#[derive(Debug, Default)]
+pub struct HookContext {
+    effects: Vec<HookEffect>,
+}
+
+impl HookContext {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn reply(&mut self, text: impl Into<String>) {
+        self.effects.push(HookEffect::Reply(with_newline(text)));
+    }
+
+    pub fn broadcast(&mut self, room: RoomId, text: impl Into<String>) {
+        self.effects.push(HookEffect::Broadcast {
+            room,
+            text: with_newline(text),
+        });
+    }
+
+    pub(crate) fn into_effects(self) -> Vec<HookEffect> {
+        self.effects
+    }
+}
+
+fn with_newline(text: impl Into<String>) -> String {
+    let mut text = text.into();
+
+    if !text.ends_with("\r\n") {
+        text.push_str("\r\n");
+    }
+
+    text
+}
+
 pub trait Hook: Debug + Send + Sync {
     fn before_move(&self, _event: &MoveEvent) -> GameResult {
         Ok(())
