@@ -192,10 +192,7 @@ async fn player_can_pick_up_and_drop_an_item() {
     let mut world = World::new("Workshop", "Tools cover a wooden bench.");
 
     world
-        .add_item(
-            world.start_room(),
-            crate::Item::new("hammer", "A sturdy iron hammer."),
-        )
+        .create_item(world.start_room(), "hammer", "A sturdy iron hammer.")
         .unwrap();
 
     let server = ServerActor::spawn_with_world(world);
@@ -221,10 +218,7 @@ async fn player_can_give_an_item_to_another_player() {
     let mut world = World::new("Workshop", "Tools cover a wooden bench.");
 
     world
-        .add_item(
-            world.start_room(),
-            crate::Item::new("iron hammer", "A sturdy iron hammer."),
-        )
+        .create_item(world.start_room(), "iron hammer", "A sturdy iron hammer.")
         .unwrap();
 
     let server = ServerActor::spawn_with_world(world);
@@ -252,12 +246,8 @@ async fn renaming_a_player_preserves_their_inventory() {
     let mut world = World::new("Workshop", "Tools cover a wooden bench.");
 
     world
-        .add_item(
-            world.start_room(),
-            crate::Item::new("hammer", "A sturdy iron hammer."),
-        )
+        .create_item(world.start_room(), "hammer", "A sturdy iron hammer.")
         .unwrap();
-
     let server = ServerActor::spawn_with_world(world);
     let mut client = TestClient::connect(&server, 4000).await;
 
@@ -276,10 +266,7 @@ async fn disconnecting_player_drops_their_inventory() {
     let mut world = World::new("Workshop", "Tools cover a wooden bench.");
 
     world
-        .add_item(
-            world.start_room(),
-            crate::Item::new("hammer", "A sturdy iron hammer."),
-        )
+        .create_item(world.start_room(), "hammer", "A sturdy iron hammer.")
         .unwrap();
 
     let server = ServerActor::spawn_with_world(world);
