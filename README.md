@@ -47,9 +47,8 @@ Or add the engine to another Rust project:
 cargo add ferrum-rs
 ```
 
-The package includes the example world at `data/world.json`. When installed as
-a binary, pass your own world file through `WORLD_FILE` because Cargo does not
-copy package data files next to the installed executable.
+The example world from `data/world.json` is embedded in the executable and is
+used whenever `WORLD_FILE` is unset.
 
 ## Quick start
 
@@ -83,7 +82,7 @@ FerrumMUD reads a `.env` file when present and supports these environment variab
 | ------------ | ----------------- | ------------------------------------------ |
 | `HOST`       | `127.0.0.1`       | Interface on which the TCP listener binds  |
 | `PORT`       | `4000`            | TCP port on which the server listens       |
-| `WORLD_FILE` | `data/world.json` | Path to the JSON world definition          |
+| `WORLD_FILE` | bundled example   | Path to a custom JSON world definition     |
 | `RUST_LOG`   | unset             | Log filter consumed by `pretty_env_logger` |
 
 For example:
