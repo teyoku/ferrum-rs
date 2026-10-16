@@ -438,6 +438,15 @@ impl ServerActor {
             .destination(current, direction)
             .ok_or("there is no exit that way")?;
 
+        let event = MoveEvent {
+            player_name: player_name.clone(),
+            from: current,
+            to: destination,
+            direction,
+        };
+
+        self.hooks.before_move(&event)?;
+
         self.send_room(
             current,
             Some(session_id),
@@ -451,6 +460,8 @@ impl ServerActor {
             .ok_or("choose a name first")?;
 
         player.move_to(destination);
+
+        self.hooks.after_move(&event);
 
         self.send_room(
             destination,
