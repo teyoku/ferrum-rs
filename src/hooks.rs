@@ -13,6 +13,13 @@ pub struct MoveEvent {
     pub direction: Direction,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SayEvent {
+    pub player_name: String,
+    pub room: RoomId,
+    pub message: String,
+}
+
 pub trait Hook: Debug + Send + Sync {
     fn before_move(&self, _event: &MoveEvent) -> GameResult {
         Ok(())
