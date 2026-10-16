@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="media/logo.png" alt="FerrumMUD logo" height="250">
+  <img src="https://raw.githubusercontent.com/teyoku/ferrum-rs/main/media/logo.png" alt="FerrumMUD logo" height="250">
 </p>
 
 # FerrumMUD
@@ -8,6 +8,8 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 [![Rust](https://img.shields.io/badge/rust-1.85%2B-orange.svg?logo=rust)](https://www.rust-lang.org)
 [![Built with Tokio](https://img.shields.io/badge/built%20with-tokio-blue.svg)](https://tokio.rs)
+[![docs.rs](https://img.shields.io/docsrs/ferrum-rs)](https://docs.rs/ferrum-rs)
+[![crates.io](https://img.shields.io/crates/v/ferrum-rs)](https://crates.io/crates/ferrum-rs)
 [![GitHub Stars](https://img.shields.io/github/stars/teyoku/ferrum-rs?logo=github)](https://github.com/teyoku/ferrum-rs/stargazers)
 [![Last Commit](https://img.shields.io/github/last-commit/teyoku/ferrum-rs?logo=github)](https://github.com/teyoku/ferrum-rs/commits)
 [![Open Issues](https://img.shields.io/github/issues/teyoku/ferrum-rs?logo=github)](https://github.com/teyoku/ferrum-rs/issues)
@@ -30,6 +32,24 @@ The project is intentionally compact: it can be used as a playable demo, a refer
 
 - Rust 1.85 or newer (the crate uses the Rust 2024 edition)
 - A TCP client such as `telnet`, `nc`, or MUDlet
+
+## Installation
+
+Install the standalone server from crates.io:
+
+```console
+cargo install ferrum-rs
+```
+
+Or add the engine to another Rust project:
+
+```console
+cargo add ferrum-rs
+```
+
+The package includes the example world at `data/world.json`. When installed as
+a binary, pass your own world file through `WORLD_FILE` because Cargo does not
+copy package data files next to the installed executable.
 
 ## Quick start
 
@@ -183,6 +203,13 @@ cargo fmt --all -- --check
 cargo clippy --all-targets --all-features -- -D warnings
 cargo test --all-targets --all-features
 cargo doc --no-deps
+```
+
+Before publishing a release, update the version and [`CHANGELOG.md`](CHANGELOG.md),
+commit all intended files, and inspect the package with:
+
+```console
+cargo publish --dry-run
 ```
 
 ## License
