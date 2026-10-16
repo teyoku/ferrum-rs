@@ -442,4 +442,32 @@ mod tests {
 
         assert_eq!(world.room_key(warehouse), Some("warehouse"));
     }
+
+    #[test]
+    fn item_identity_survives_movement() {
+        let mut world = World::new("Workshop", "Tools cover a wooden bench.");
+
+        let room = world.start_room();
+
+        let first = world
+            .create_item(room, "coin", "A tarnished copper coin.")
+            .unwrap();
+
+        let second = world
+            .create_item(room, "coin", "A newly minted copper coin.")
+            .unwrap();
+
+        assert_ne!(first, second);
+
+        let item = world.take_item(room, "coin").unwrap();
+
+        assert_eq!(item.id(), first);
+
+        world.add_item(room, item).unwrap();
+
+        assert_eq!(
+            world.find_item_by_id(room, first).map(Item::id),
+            Some(first),
+        );
+    }
 }
