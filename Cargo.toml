@@ -2,13 +2,31 @@
 name = "ferrum-rs"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.85"
+authors = ["teyoku"]
+description = "An asynchronous, extensible MUD engine with JSON worlds, commands, and event hooks"
 license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/teyoku/ferrum-rs"
+homepage = "https://github.com/teyoku/ferrum-rs"
+documentation = "https://docs.rs/ferrum-rs"
+keywords = ["mud", "game-engine", "telnet", "tokio", "multiplayer"]
+categories = ["game-engines", "network-programming"]
+include = [
+    "/src/**",
+    "/data/world.json",
+    "/.env-example",
+    "/README.md",
+    "/CHANGELOG.md",
+    "/LICENSE-APACHE.md",
+    "/LICENSE-MIT.md",
+]
 
 [dependencies]
 dotenvy = "0.15.7"
 futures-util = "0.3.34"
 pretty_env_logger = "0.5.0"
-tokio = { version = "1.53.2", features = ["full"] }
+tokio = { version = "1.53.2", features = ["io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
 tokio-util = { version = "0.7.20", features = ["codec"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
