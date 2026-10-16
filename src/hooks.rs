@@ -63,11 +63,17 @@ fn with_newline(text: impl Into<String>) -> String {
 }
 
 pub trait Hook: Debug + Send + Sync {
-    fn before_move(&self, _event: &MoveEvent) -> GameResult {
+    fn before_move(&self, _event: &MoveEvent, _context: &mut HookContext) -> GameResult {
         Ok(())
     }
 
-    fn after_move(&self, _event: &MoveEvent) {}
+    fn after_move(&self, _event: &MoveEvent, _context: &mut HookContext) {}
+
+    fn before_say(&self, _event: &MoveEvent, _context: &mut HookContext) -> GameResult {
+        Ok(())
+    }
+
+    fn after_say(&self, _event: &MoveEvent, _context: &mut HookContext) {}
 }
 
 #[derive(Debug, Default)]
@@ -87,17 +93,31 @@ impl HookRegistry {
         self.hooks.push(Arc::new(hook));
     }
 
-    pub(crate) fn before_move(&self, event: &MoveEvent) -> GameResult {
+    pub(crate) fn before_move(&self, event: &MoveEvent, context: &mut HookContext) -> GameResult {
         for hook in &self.hooks {
-            hook.before_move(event)?;
+            hook.before_move(event, context)?;
         }
 
         Ok(())
     }
 
-    pub(crate) fn after_move(&self, event: &MoveEvent) {
+    pub(crate) fn after_move(&self, event: &MoveEvent, context: &mut HookContext) {
         for hook in &self.hooks {
-            hook.after_move(event);
+            hook.after_move(event, context);
+        }
+    }
+
+    pub(crate) fn before_say(&self, event: &MoveEvent, context: &mut HookContext) -> GameResult {
+        for hook in &self.hooks {
+            hook.before_say(event, context)?;
+        }
+
+        Ok(())
+    }
+
+    pub(crate) fn after_say(&self, event: &MoveEvent, context: &mut HookContext) {
+        for hook in &self.hooks {
+            hook.after_say(event, context);
         }
     }
 }
