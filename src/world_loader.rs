@@ -8,7 +8,7 @@ use std::{
 use serde::Deserialize;
 
 use crate::{
-    Item, RoomId,
+    RoomId,
     world::{Direction, World, WorldError},
 };
 
@@ -167,7 +167,7 @@ fn build_world(definition: WorldDefinition) -> Result<World, WorldLoadError> {
         let room_id = find_room(&room_ids, &room.key)?;
 
         for item in &room.items {
-            world.add_item(room_id, Item::new(&item.name, &item.description))?;
+            world.create_item(room_id, &item.name, &item.description)?;
         }
     }
 
