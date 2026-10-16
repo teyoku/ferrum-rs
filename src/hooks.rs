@@ -69,11 +69,11 @@ pub trait Hook: Debug + Send + Sync {
 
     fn after_move(&self, _event: &MoveEvent, _context: &mut HookContext) {}
 
-    fn before_say(&self, _event: &MoveEvent, _context: &mut HookContext) -> GameResult {
+    fn before_say(&self, _event: &SayEvent, _context: &mut HookContext) -> GameResult {
         Ok(())
     }
 
-    fn after_say(&self, _event: &MoveEvent, _context: &mut HookContext) {}
+    fn after_say(&self, _event: &SayEvent, _context: &mut HookContext) {}
 }
 
 #[derive(Debug, Default)]
@@ -107,7 +107,7 @@ impl HookRegistry {
         }
     }
 
-    pub(crate) fn before_say(&self, event: &MoveEvent, context: &mut HookContext) -> GameResult {
+    pub(crate) fn before_say(&self, event: &SayEvent, context: &mut HookContext) -> GameResult {
         for hook in &self.hooks {
             hook.before_say(event, context)?;
         }
@@ -115,7 +115,7 @@ impl HookRegistry {
         Ok(())
     }
 
-    pub(crate) fn after_say(&self, event: &MoveEvent, context: &mut HookContext) {
+    pub(crate) fn after_say(&self, event: &SayEvent, context: &mut HookContext) {
         for hook in &self.hooks {
             hook.after_say(event, context);
         }
