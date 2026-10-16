@@ -5,6 +5,7 @@ use tokio::sync::{mpsc, oneshot};
 use crate::{
     command::{CommandContext, CommandRegistry},
     commands::register_builtins,
+    error::GameResult,
     hooks::{HookRegistry, MoveEvent},
     player::{Player, PlayerNameError},
     world::{Direction, RoomId, World},
@@ -287,14 +288,14 @@ impl ServerActor {
         }
     }
 
-    pub(crate) fn say(&mut self, sender_id: SessionId, message: &str) -> Result<(), &'static str> {
+    pub(crate) fn say(&mut self, sender_id: SessionId, message: &str) -> GameResult {
         let Some((sender_name, room)) = self
             .sessions
             .get(&sender_id)
             .and_then(ConnectedSession::player)
             .map(|player| (player.name().to_owned(), player.room()))
         else {
-            return Err("choose a name before speaking");
+            return Err("choose a name before speaking".into());
         };
 
         self.send_text(sender_id, format!("You say: {message}\r\n"));
@@ -389,15 +390,15 @@ impl ServerActor {
         names
     }
 
-    fn current_room(&self, session_id: SessionId) -> Result<RoomId, &'static str> {
+    fn current_room(&self, session_id: SessionId) -> GameResult<RoomId> {
         self.sessions
             .get(&session_id)
             .and_then(ConnectedSession::player)
             .map(Player::room)
-            .ok_or("choose a name first")
+            .ok_or("choose a name first".into())
     }
 
-    pub(crate) fn look(&mut self, session_id: SessionId) -> Result<(), &'static str> {
+    pub(crate) fn look(&mut self, session_id: SessionId) -> GameResult {
         let room = self.current_room(session_id)?;
 
         let mut description = self.world.describe(room).ok_or("room does not exist")?;
@@ -419,11 +420,7 @@ impl ServerActor {
         Ok(())
     }
 
-    pub(crate) fn go(
-        &mut self,
-        session_id: SessionId,
-        direction: &str,
-    ) -> Result<(), &'static str> {
+    pub(crate) fn go(&mut self, session_id: SessionId, direction: &str) -> GameResult {
         let direction = Direction::parse(direction).ok_or("unknown direction")?;
 
         let (current, player_name) = self
@@ -513,11 +510,7 @@ impl ServerActor {
         text
     }
 
-    pub(crate) fn get_item(
-        &mut self,
-        session_id: SessionId,
-        requested_name: &str,
-    ) -> Result<(), &'static str> {
+    pub(crate) fn get_item(&mut self, session_id: SessionId, requested_name: &str) -> GameResult {
         let (player_name, room) = self
             .sessions
             .get(&session_id)
@@ -549,11 +542,7 @@ impl ServerActor {
         Ok(())
     }
 
-    pub(crate) fn drop_item(
-        &mut self,
-        session_id: SessionId,
-        requested_name: &str,
-    ) -> Result<(), &'static str> {
+    pub(crate) fn drop_item(&mut self, session_id: SessionId, requested_name: &str) -> GameResult {
         let (player_name, room, item) = {
             let player = self
                 .sessions
@@ -585,7 +574,7 @@ impl ServerActor {
         Ok(())
     }
 
-    pub(crate) fn show_inventory(&mut self, session_id: SessionId) -> Result<(), &'static str> {
+    pub(crate) fn show_inventory(&mut self, session_id: SessionId) -> GameResult {
         let player = self
             .sessions
             .get(&session_id)
@@ -612,7 +601,7 @@ impl ServerActor {
         &mut self,
         session_id: SessionId,
         requested_name: &str,
-    ) -> Result<(), &'static str> {
+    ) -> GameResult {
         let (room, carried_description) = self
             .sessions
             .get(&session_id)
@@ -644,7 +633,7 @@ impl ServerActor {
         giver_id: SessionId,
         requested_item: &str,
         requested_recipient: &str,
-    ) -> Result<(), &'static str> {
+    ) -> GameResult {
         let (giver_name, room) = self
             .sessions
             .get(&giver_id)
@@ -655,7 +644,7 @@ impl ServerActor {
         let normalized_recipient = requested_recipient.trim().to_lowercase();
 
         if giver_name.to_lowercase() == normalized_recipient {
-            return Err("you cannot give an item to yourself");
+            return Err("you cannot give an item to yourself".into());
         }
 
         let recipient_id = self
